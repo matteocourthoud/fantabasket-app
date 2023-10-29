@@ -21,10 +21,26 @@ def compute_fantabasket_gain(old_value: float, score: float) -> float:
 
 
 def _compute_fantabasket_score(df: pd.DataFrame) -> pd.Series:
-    fanta_score = (1 * df['pts'] + 1 * df['drb'] + 1.25 * df['orb'] + 1.5 * df['ast'] + 1.5 * df['stl'] + 1.5 * df['blk'] +
-                   1 * df['start'] - 1 * (df['fga'] - df['fg']) - 1 * (df['fta'] - df['ft']) - 1.5 * df['tov'] +
-                   5 * ((df['pts'] > 9) & (df['ast'] > 9)) + 5 * ((df['pts'] > 9) & (df['trb'] > 9)) - 5 * (df['pf'] > 5) +
-                   3 * (df['3p'] > 2) + 1 * (df['3p'] > 3) + 1 * (df['3p'] > 4)) * (1 + 0.05 * df['win'])
+    """Source: https://docs.dunkest.com/v/rules-en/fantasy/player-scoring."""
+    fanta_score = (
+            (1 * df['pts']
+             + 1 * df['drb']
+             + 1.25 * df['orb']
+             + 1.5 * df['ast']
+             + 1.5 * df['stl']
+             - 1.5 * df['tov']
+             + 1.5 * df['blk']
+             + 5 * ((df['pts'] >= 10) & (df['ast'] >= 10))
+             + 5 * ((df['pts'] >= 10) & (df['trb'] >= 10))
+             + 1 * df['start']
+             + 3 * (df['3p'] >= 3)
+             + 1 * (df['3p'] >= 4)
+             + 1 * (df['3p'] >= 5)
+             - 1 * (df['fga'] - df['fg'])
+             - 1 * (df['fta'] - df['ft'])
+             - 5 * (df['pf'] > 5)  # TODO: check if the fouled-out malus is still there
+             )
+            * (1 + 0.05 * df['win']))
     return fanta_score
 
 
