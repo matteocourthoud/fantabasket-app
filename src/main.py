@@ -1,10 +1,11 @@
+import os
 from scraping.scrape_calendar import update_get_nba_calendar
 from scraping.scrape_injuries import update_get_nba_injuries
 from scraping.scrape_games import Scraper
 from model.compute_stats import FantabasketStats
 from model.predict_gain import GainModel
 
-DATA_DIR = "/Users/mcourt/Dropbox/Projects/Fantabasket/data"
+DATA_DIR = os.getcwd() + "/../data"
 SEASON = 2023
 
 if __name__ == '__main__':

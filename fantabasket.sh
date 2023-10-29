@@ -1,9 +1,10 @@
-# Choose project
-cd Dropbox/Projects/Fantabasket
+# Set src as current directory
+ABSPATH="$(dirname "$0")"
+cd $ABSPATH/src/
 
-# Scrape games
-python3 src/main.py
+# Prepare data for dashboard
+python3 main.py
 
 # Serve dashboard
 open http://localhost:8080
-python3 src/dashboard/dashboard.py
+python3 dashboard/dashboard.py

@@ -15,11 +15,11 @@ import plotly.graph_objects as go
 NUM_PLAYERS = 8
 NUM_VISIBLE_PLAYERS = 3
 SEASON = 2023
-PLAYERS_FILE = 'data/players.csv'
-GAMES_FILE = 'data/%i/games.csv'
-INJURIES_FILE = 'data/injuries.csv'
-CURRENT_STATS_FILE = 'data/current_stats.csv'
-PREDICTED_GAIN_FILE = 'data/predicted_gain.csv'
+PLAYERS_FILE = '../data/players.csv'
+GAMES_FILE = '../data/%i/games.csv'
+INJURIES_FILE = '../data/injuries.csv'
+CURRENT_STATS_FILE = '../data/current_stats.csv'
+PREDICTED_GAIN_FILE = '../data/predicted_gain.csv'
 
 
 def add_date_position(df: pd.DataFrame) -> pd.DataFrame:
