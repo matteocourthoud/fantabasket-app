@@ -1,5 +1,5 @@
 """
-Predict players for Fantabasket.
+Compute Fantabasket statistics from NBA statistics.
 Author: Matteo Courthoud
 Date: 22/10/2022
 """
@@ -14,7 +14,7 @@ CURRENT_STATS_FILE = 'current_stats.csv'
 
 
 def compute_fantabasket_gain(old_value: float, score: float) -> float:
-    """Function from backward_induct_gain_formula."""
+    """Update player value, from previous value and current performance."""
     if np.isnan(score):
         return -0.1
     return 0.025 * score - 0.045 * old_value
@@ -52,6 +52,7 @@ class FantabasketStats:
         self._df_stats = df_stats
 
     def _init_fantabasket_values(self, past_season_stats_file: str) -> pd.DataFrame:
+        """Initializes the fantabasket values at the beginning of the season."""
         df_past_season = pd.read_csv(past_season_stats_file)
         df_past_season['fanta_score'] = _compute_fantabasket_score(df_past_season)
         df_values = df_past_season.groupby('name', as_index=False).agg(fanta_value=('fanta_score', 'mean'))
@@ -59,6 +60,7 @@ class FantabasketStats:
         return df_values
 
     def _compute_player_value(self, df_player: pd.DataFrame):
+        """Computes players Fantabasket value given the initial values and players' performance."""
         for i in range(len(df_player)):  # TODO: loop over dates increasing
             # If player has no initial value, replace it with half the first score
             fanta_score = df_player.iloc[i, 2]  # TODO: move to loc
@@ -75,6 +77,7 @@ class FantabasketStats:
         return df_player
 
     def _compute_season_stats(self, past_season_stats_file: str) -> pd.DataFrame:
+        """Computes Fantabasket statistics in the current season: value, score and gain over games."""
         # Get players values
         df_values = self._init_fantabasket_values(past_season_stats_file)
         df_current_stats = self._df_stats
@@ -90,13 +93,14 @@ class FantabasketStats:
         return df_current_stats
 
     def update_get_fantabasket_stats(self) -> pd.DataFrame:
-        """Computes and saves current season NBA statistics and fantabasket scores."""
+        """Computes and saves current season NBA statistics and Fantabasket scores."""
         past_season_stats_file = os.path.join(self._data_dir, str(self._season - 1), STATS_FILE)
         df_stats = self._compute_season_stats(past_season_stats_file)
         df_stats.to_csv(os.path.join(self._data_dir, CURRENT_STATS_FILE), index=False)
         return df_stats
 
     def load_df(self, file_name):
+        """Loads dataframe from csv file."""
         file_path = os.path.join(self._data_dir, str(self._season), file_name)
         df = pd.read_csv(file_path)
         return df
