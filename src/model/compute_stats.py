@@ -7,8 +7,6 @@ import os.path
 import numpy as np
 import pandas as pd
 
-PLAYERS_FILE = 'players.csv'
-GAMES_FILE = 'games.csv'
 STATS_FILE = 'stats.csv'
 CURRENT_STATS_FILE = 'current_stats.csv'
 
@@ -92,11 +90,12 @@ class FantabasketStats:
                 df_current_stats.loc[df_current_stats['name'] == player, cols])
         return df_current_stats
 
-    def update_get_fantabasket_stats(self) -> pd.DataFrame:
+    def update_get_fantabasket_stats(self, save: bool = True) -> pd.DataFrame:
         """Computes and saves current season NBA statistics and Fantabasket scores."""
         past_season_stats_file = os.path.join(self._data_dir, str(self._season - 1), STATS_FILE)
         df_stats = self._compute_season_stats(past_season_stats_file)
-        df_stats.to_csv(os.path.join(self._data_dir, CURRENT_STATS_FILE), index=False)
+        if save:
+            df_stats.to_csv(os.path.join(self._data_dir, CURRENT_STATS_FILE), index=False)
         return df_stats
 
     def load_df(self, file_name):

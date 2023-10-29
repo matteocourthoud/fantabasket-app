@@ -63,6 +63,7 @@ def update_get_nba_calendar(data_dir: str, season: int):
     file_path = os.path.join(data_dir, str(season), CALENDAR_FILE)
     if not os.path.exists(file_path):
         df_calendar = scrape_nba_calendar(season=season)
+        df_calendar = df_calendar.sort_values(by="date", ignore_index=True)
         df_calendar.to_csv(file_path, index=False)
     df_calendar = pd.read_csv(file_path)
     return df_calendar

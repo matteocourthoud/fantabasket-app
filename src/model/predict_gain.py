@@ -9,10 +9,6 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from model.compute_stats import compute_fantabasket_gain
 
-CALENDAR_FILE = 'calendar.csv'
-GAMES_FILE = 'games.csv'
-INJURIES_FILE = 'injuries.csv'
-CURRENT_STATS_FILE = 'current_stats.csv'
 PREDICTED_GAIN_FILE = 'predicted_gain.csv'
 
 
@@ -93,23 +89,6 @@ class GainModel:
         model = self._fit_model_gain(df_stats)
         df_predicted_gain = self._predict_gain(df_next_match, model)
         return df_predicted_gain
-
-    def evaluate_model(self):
-        # Get stats and test
-        df_stats = self._get_season_stats_with_injuries()
-        scores = np.zeros(10)
-        dates = df_stats.sort_values('date').date.unique()
-        for i, date in enumerate(dates[-10:]):
-            df_train = df_stats[(df_stats.date < date) & (pd.isna(df_stats.status))].copy()
-            df_test = df_stats[(df_stats.date == date) & (df_stats.name.isin(df_train.name.unique()))].copy()
-
-            # Evaluate model
-            model = self._fit_model_gain(df_train)
-            df_test = self._predict_gain(df_test, model)
-            df_test = df_test[['name', 'fanta_value', 'fanta_gain', 'predicted_gain']]
-            scores[i] = df_test.iloc[:20, 2].mean()
-            print(f'{pd.to_datetime(date): %Y-%m-%d} score: {scores[i]: .4f}')
-        print(f'      TOTAL score: {np.sum(scores): .4f}: ')
 
     def update_get_predicted_gain(self) -> pd.DataFrame:
         """Predicts and saves the fantabasket gain for next match ."""

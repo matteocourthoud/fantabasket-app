@@ -48,6 +48,7 @@ def update_get_nba_injuries(data_dir: str, update: bool = False):
     if update:
         try:
             df_injuries = _scrape_injuries()
+            df_injuries = df_injuries.sort_values(by="name", ignore_index=True)
             df_injuries.to_csv(file_path, index=False)
         except Exception as e:
             print(e)

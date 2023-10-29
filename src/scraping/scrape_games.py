@@ -37,9 +37,10 @@ class Scraper:
             return pd.read_csv(file_path)
         return pd.DataFrame()
 
-    def _save_data(self, df: pd.DataFrame, file_name: str):
+    def _save_data(self, df: pd.DataFrame, file_name: str, index_col: str):
         """Saves/appends data to file."""
         file_path = os.path.join(self._data_dir, str(self._season), file_name)
+        df = df.sort_values(by=index_col, ignore_index=True)
         df.to_csv(file_path, index=False)
 
     def _get_unscraped_dates(self, df_dates: pd.DataFrame) -> List[str]:
@@ -130,15 +131,15 @@ class Scraper:
                 # Scrape and save game information
                 df_game = self._scrape_game(game, date)
                 df_games = pd.concat([df_games, df_game], ignore_index=True)
-                self._save_data(df=df_games, file_name=GAMES_FILE)
+                self._save_data(df=df_games, file_name=GAMES_FILE, index_col="game_id")
                 # Scrape and save game stats
                 df_stat = self._scrape_game_stats(game)
                 df_stats = pd.concat([df_stats, df_stat], ignore_index=True)
-                self._save_data(df=df_stats, file_name=STATS_FILE)
+                self._save_data(df=df_stats, file_name=STATS_FILE, index_col="game_id")
             # Save date information
             df_date = pd.DataFrame({'date': [date]})
             df_dates = pd.concat([df_dates, df_date], ignore_index=True)
-            self._save_data(df=df_dates, file_name=DATES_FILE)
+            self._save_data(df=df_dates, file_name=DATES_FILE, index_col="date")
 
     def update_get_nba_stats(self):
         """Loads NBA stats."""
