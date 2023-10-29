@@ -47,7 +47,7 @@ if __name__ == '__main__':
     df_current_stats = fs.update_get_fantabasket_stats(save=False)
     # Test model
     gm = GainModel(data_dir=data_dir, season=season,
-                   df_calendar=df_calendar, df_injuries=df_injuries, df_games=df_games, df_stats=df_stats)
+                   df_calendar=df_calendar, df_injuries=df_injuries, df_games=df_games, df_stats=df_current_stats)
     test_model(gm)
 
 
