@@ -279,7 +279,7 @@ def make_figure(role, metric, value_range):
         xaxis_title="<b>Date</b>",
         yaxis_title="<b>Score</b>",
         legend_title="<b>Player</b>",
-        yaxis_range=[-10, 70],
+        yaxis_range=[-10, 75],
         xaxis_range=[min(temp.date)-pd.Timedelta(2, 'd'), max(temp.date)+pd.Timedelta(2, 'd')],
     )
     return fig
