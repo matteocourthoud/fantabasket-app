@@ -3,7 +3,7 @@ Scrape NBA games stats.
 Author: Matteo Courthoud
 Date: 22/10/2022
 """
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
 import re
 import requests
@@ -46,7 +46,8 @@ class Scraper:
     def _get_unscraped_dates(self, df_dates: pd.DataFrame) -> List[str]:
         """Generates a list of unscraped dates."""
         all_dates = self._df_calendar.date.values
-        all_dates = set([d for d in all_dates if datetime.strptime(d, "%Y-%m-%d").date() < date.today()])
+        latest_date = date.today() - timedelta(days=2)
+        all_dates = set([d for d in all_dates if datetime.strptime(d, "%Y-%m-%d").date() < latest_date])
         if df_dates.empty:
             return sorted(list(all_dates))
         scraped_dates = set(df_dates.date.values)
