@@ -8,7 +8,6 @@ import os
 import numpy as np
 import pandas as pd
 
-SEASON = 2024
 LINEUPS_FILE = 'lineups.csv'
 TEAMS_FILE = 'teams.csv'
 STATS_FILE = '%i/stats.csv'
@@ -57,7 +56,7 @@ def scrape_next_lineups(data_dir: str) -> pd.DataFrame:
             team_short = team_short if team_short != "NOR" else "NOP"
             team_name = df_teams.loc[df_teams.team_short == team_short, "team"].values[0]
             players = remove_suffixes(df.iloc[:, col].to_list())
-            temp = pd.DataFrame({"team": [team_name]*5, "player": players})
+            temp = pd.DataFrame({"team": [team_name]*5, "name": players})
             df_next_lineups = pd.concat([df_next_lineups, temp])
     return df_next_lineups
 
