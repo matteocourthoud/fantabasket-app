@@ -12,7 +12,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
 SEASON = 2024
-INITIAL_RATINGS_FILE = "%i/ratings.csv"
+INITIAL_RATINGS_FILE = "%i/initial_ratings.csv"
 RATINGS_FILE = "%i/ratings.csv"
 WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'
 
@@ -80,7 +80,7 @@ def scrape_initial_ratings():
     print("Verify that url works: \n", url)
 
     df_ratings = scrape_ratings(url)
-    df_ratings["initial_rating"] = pd.to_numeric(df_ratings["dunkest_value"]) + pd.to_numeric(
+    df_ratings["initial_rating"] = pd.to_numeric(df_ratings["dunkest_value"]) - pd.to_numeric(
         df_ratings["plus"].str.replace("+", "").str.replace("−", "-"))
     df_ratings = df_ratings[["name", "initial_rating"]]
     return df_ratings
@@ -93,5 +93,5 @@ def update_initial_ratings(data_dir: str, season: int) -> pd.DataFrame:
     else:
         print("Scraping initial ratings")
         df_ratings = scrape_initial_ratings()
-        df_ratings.to_csv(file_path, index=False)
+        df_ratings.round(1).to_csv(file_path, index=False)
         return df_ratings
