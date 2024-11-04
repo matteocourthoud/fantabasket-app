@@ -3,6 +3,8 @@ Scrape NBA games stats.
 Author: Matteo Courthoud
 Date: 22/10/2022
 """
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -59,10 +61,10 @@ def scrape_next_lineups() -> pd.DataFrame:
     return df_next_lineups
 
 
-def get_df_lineups(season=SEASON) -> pd.DataFrame:
+def update_nba_lineups(data_dir: str, season: int) -> pd.DataFrame:
     df_last_lineups = get_df_last_lineups(season=season)
     df_next_lineups = scrape_next_lineups()
     df_last_lineups_not_updated = df_last_lineups[~df_last_lineups.team.isin(df_next_lineups.team.unique())]
     df_lineups = pd.concat([df_last_lineups_not_updated, df_next_lineups]).sort_values("team").reset_index(drop=True)
-    df_lineups.to_csv(LINEUPS_FILE, index=False)
+    df_lineups.to_csv(os.path.join(data_dir, LINEUPS_FILE), index=False)
     return df_lineups
