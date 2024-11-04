@@ -43,7 +43,7 @@ TEAM_NAMES_MAP = {
 }
 
 
-def scrape_nba_calendar(season: int):
+def scrape_nba_calendar(season: int) -> pd.DataFrame:
     """Scrapes calendar of all NBA games for a season."""
     df_calendar = pd.DataFrame()
     for month in MONTHS:
@@ -58,7 +58,7 @@ def scrape_nba_calendar(season: int):
     return df_calendar
 
 
-def update_get_nba_calendar(data_dir: str, season: int):
+def update_get_nba_calendar(data_dir: str, season: int) -> pd.DataFrame:
     """Loads NBA calendar."""
     file_path = os.path.join(data_dir, str(season), CALENDAR_FILE)
     if not os.path.exists(file_path):

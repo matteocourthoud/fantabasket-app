@@ -16,10 +16,11 @@ GAMES_FILE = '%i/games.csv'
 WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'
 
 
-def get_df_last_lineups(season: int) -> pd.DataFrame:
-    df_stats = pd.read_csv(STATS_FILE % season)
-    df_games = pd.read_csv(GAMES_FILE % season)
-    df_teams = pd.read_csv(TEAMS_FILE)
+def get_df_last_lineups(data_dir: str, season: int) -> pd.DataFrame:
+    df_stats = pd.read_csv(os.path.join(data_dir, STATS_FILE % season))
+    df_games = pd.read_csv(os.path.join(data_dir, GAMES_FILE % season))
+    df_teams = pd.read_csv(os.path.join(data_dir, TEAMS_FILE))
+
     df_stats = pd.merge(df_stats, df_games, on="game_id", how="left")
     df_stats["team"] = np.where(df_stats.win == 1, df_stats.winner, df_stats.loser)
 
@@ -46,8 +47,8 @@ def remove_suffixes(strings: list[str]) -> list[str]:
     return cleaned_strings
 
 
-def scrape_next_lineups() -> pd.DataFrame:
-    df_teams = pd.read_csv(TEAMS_FILE)
+def scrape_next_lineups(data_dir: str) -> pd.DataFrame:
+    df_teams = pd.read_csv(os.path.join(data_dir, TEAMS_FILE))
     dfs = pd.read_html(WEBSITE_URL)
     df_next_lineups = pd.DataFrame()
     for df in dfs:
@@ -62,8 +63,11 @@ def scrape_next_lineups() -> pd.DataFrame:
 
 
 def update_nba_lineups(data_dir: str, season: int) -> pd.DataFrame:
-    df_last_lineups = get_df_last_lineups(season=season)
-    df_next_lineups = scrape_next_lineups()
+    """Scrape NBA lineups from https://basketballmonster.com/nbalineups."""
+    print("Scraping lineups...")
+
+    df_last_lineups = get_df_last_lineups(data_dir=data_dir, season=season)
+    df_next_lineups = scrape_next_lineups(data_dir=data_dir)
     df_last_lineups_not_updated = df_last_lineups[~df_last_lineups.team.isin(df_next_lineups.team.unique())]
     df_lineups = pd.concat([df_last_lineups_not_updated, df_next_lineups]).sort_values("team").reset_index(drop=True)
     df_lineups.to_csv(os.path.join(data_dir, LINEUPS_FILE), index=False)

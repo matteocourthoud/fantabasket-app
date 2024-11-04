@@ -46,6 +46,7 @@ def update_get_nba_injuries(data_dir: str, update: bool = False):
     """Updates and returns dataframe with injured NBA players."""
     file_path = os.path.join(data_dir, INJURIES_FILE)
     if update:
+        print("Scraping injuries...")
         try:
             df_injuries = _scrape_injuries()
             df_injuries = df_injuries.sort_values(by="name", ignore_index=True)
