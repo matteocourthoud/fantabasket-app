@@ -66,7 +66,7 @@ def _add_name_sort(df: pd.DataFrame) -> pd.DataFrame:
 def update_get_players(data_dir: str, season: int) -> pd.DataFrame():
     # Import / initialize dataframes
     df_all_players = _get_df_all_players(data_dir=data_dir, season=season)
-    file_path = os.path.join(data_dir, str(season), PLAYERS_FILE)
+    file_path = os.path.join(data_dir, PLAYERS_FILE)
     if os.path.exists(file_path):
         df_players = pd.read_csv(file_path)
     else:
