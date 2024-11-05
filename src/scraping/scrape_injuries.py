@@ -1,8 +1,5 @@
-"""
-Scrape NBA games stats.
-Author: Matteo Courthoud
-Date: 22/10/2022
-"""
+"""Scrapes NBA players' injuries from www.cbssports.com/nba/injuries/."""
+
 import os
 import pandas as pd
 
@@ -42,7 +39,7 @@ def _scrape_injuries() -> pd.DataFrame:
     return df_injuries
 
 
-def update_get_nba_injuries(data_dir: str, update: bool = False):
+def update_get_nba_injuries(data_dir: str, update: bool = False) -> pd.DataFrame:
     """Updates and returns dataframe with injured NBA players."""
     file_path = os.path.join(data_dir, INJURIES_FILE)
     if update:
