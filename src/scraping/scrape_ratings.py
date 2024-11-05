@@ -9,8 +9,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
 SEASON = 2024
-INITIAL_RATINGS_FILE = "%initial_ratings.csv"
-RATINGS_FILE = "%ratings.csv"
+INITIAL_RATINGS_FILE = "initial_ratings.csv"
+RATINGS_FILE = "ratings.csv"
 WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'
 
 
@@ -49,7 +49,7 @@ def _scrape_ratings(url: str) -> pd.DataFrame:
 
 
 def _update_ratings(data_dir: str, season: int) -> pd.DataFrame:
-    file_path = os.path.join(data_dir, RATINGS_FILE % season)
+    file_path = os.path.join(data_dir, str(season), RATINGS_FILE)
     date_today = datetime.now().date()
 
     if os.path.exists(file_path):
