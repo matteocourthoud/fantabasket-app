@@ -6,14 +6,14 @@ import pandas as pd
 
 LINEUPS_FILE = 'lineups.csv'
 TEAMS_FILE = 'teams.csv'
-STATS_FILE = '%i/stats.csv'
-GAMES_FILE = '%i/games.csv'
+STATS_FILE = 'stats.csv'
+GAMES_FILE = 'games.csv'
 WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'
 
 
 def _get_df_last_lineups(data_dir: str, season: int) -> pd.DataFrame:
     df_stats = pd.read_csv(os.path.join(data_dir, str(season), STATS_FILE))
-    df_games = pd.read_csv(os.path.join(data_dir, GAMES_FILE % season))
+    df_games = pd.read_csv(os.path.join(data_dir, str(season), GAMES_FILE))
     df_teams = pd.read_csv(os.path.join(data_dir, TEAMS_FILE))
 
     df_stats = pd.merge(df_stats, df_games, on="game_id", how="left")
@@ -33,7 +33,7 @@ def _remove_suffixes(strings: list[str]) -> list[str]:
     suffixes = ["Q", "P", "IN", "Off Inj"]
     cleaned_strings = []
     for s in strings:
-        # Check each suffix and remove if found at the end of the string
+        s = str(s)
         for suffix in suffixes:
             if s.endswith(suffix):
                 s = s[:-len(suffix)]  # Remove the suffix
