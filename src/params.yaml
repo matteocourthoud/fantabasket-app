@@ -1,0 +1,7 @@
+# Parameter file
+
+SEASON: 2024
+LINEUPS_FILE: 'lineups.csv'
+TEAMS_FILE: '../data/teams.csv'
+STATS_FILE: '../data/%i/stats.csv'
+GAMES_FILE: '../data/%i/games.csv'
