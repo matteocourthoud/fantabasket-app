@@ -5,6 +5,7 @@ import re
 import time
 from typing import Tuple
 import requests
+from unidecode import unidecode
 import pandas as pd
 from bs4 import BeautifulSoup
 
@@ -54,7 +55,20 @@ def _scrape_all_player_positions(df_players: pd.DataFrame, df_all_players: pd.Da
 
 
 def _add_name_sort(df: pd.DataFrame) -> pd.DataFrame:
-    df["name_short"] = df['name'].apply(lambda x: f"{x.split()[0][0]}. {x.split()[-1]}")
+    f_clean_names = lambda x: f"{x.split()[0][0]}. {unidecode(x.split()[-1])}"
+    df["name_short"] = df['name'].apply(f_clean_names)
+
+    # Clean suffixes
+    for suffix in ["Jr.", "Sr.", "II", "III", "IV"]:
+        rows = df["name_short"].str.endswith(suffix)
+        f_clean_names_with_suffix = lambda x: f"{x.split()[0][0]}. {unidecode(x.split()[-2])} {x.split()[-1]}"
+        df.loc[rows, "name_short"] = df.loc[rows, 'name'].apply(f_clean_names_with_suffix)
+
+    # Custom cleaning
+    df.loc[df.name == "Xavier Tillman Sr.", "name_short"] = "X. Tillman"
+    df.loc[df.name == "Ron Holland", "name_short"] = "R. Holland II"
+    df.loc[df.name == "Tristan Da Silva", "name_short"] = "T. da Silva"
+    df.loc[df.name == "Yongxi Cui", "name_short"] = "C. Yongxi"
     return df
 
 
