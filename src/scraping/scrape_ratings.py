@@ -22,7 +22,7 @@ def _extract_dunkest_table(driver) -> pd.DataFrame:
         cols = row.find_elements(By.TAG_NAME, "td")
         data.append([col.text for col in cols])
         df = pd.DataFrame(data).iloc[:, [0, 4, 5]]
-    df.columns = ["name", "dunkest_value", "plus"]
+    df.columns = ["name_short", "dunkest_value", "plus"]
     return df
 
 
@@ -61,7 +61,7 @@ def _update_ratings(data_dir: str, season: int) -> pd.DataFrame:
 
     print("Scraping ratings...")
     url = f"https://www.dunkest.com/en/nba/stats/players/table?season_id={season - 2005}&mode=dunkest"
-    df_current_ratings = _scrape_ratings(url=url)[["name", "rating"]]
+    df_current_ratings = _scrape_ratings(url=url)[["name_short", "rating"]]
     df_current_ratings["date"] = date_today
     df_ratings = pd.concat([df_ratings, df_current_ratings])
     df_ratings.to_csv(file_path, index=False)
@@ -79,7 +79,7 @@ def _scrape_initial_ratings() -> pd.DataFrame:
     df_ratings = _scrape_ratings(url)
     df_ratings["initial_rating"] = pd.to_numeric(df_ratings["dunkest_value"]) - pd.to_numeric(
         df_ratings["plus"].str.replace("+", "").str.replace("−", "-"))
-    df_ratings = df_ratings[["name", "initial_rating"]]
+    df_ratings = df_ratings[["name_short", "initial_rating"]]
     return df_ratings
 
 
