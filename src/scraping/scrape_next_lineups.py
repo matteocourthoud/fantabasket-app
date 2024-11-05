@@ -33,7 +33,6 @@ def _remove_suffixes(strings: list[str]) -> list[str]:
     suffixes = ["Q", "P", "IN", "Off Inj"]
     cleaned_strings = []
     for s in strings:
-        s = str(s)
         for suffix in suffixes:
             if s.endswith(suffix):
                 s = s[:-len(suffix)]  # Remove the suffix
@@ -51,6 +50,8 @@ def _scrape_next_lineups(data_dir: str) -> pd.DataFrame:
             team_short = df.columns[col][1].replace("@ ", "")
             team_short = team_short if team_short != "NOR" else "NOP"
             team_name = df_teams.loc[df_teams.team_short == team_short, "team"].values[0]
+            if df.iloc[:, col].isnull().any():
+                continue
             players = _remove_suffixes(df.iloc[:, col].to_list())
             temp = pd.DataFrame({"team": [team_name]*5, "name": players})
             df_next_lineups = pd.concat([df_next_lineups, temp])

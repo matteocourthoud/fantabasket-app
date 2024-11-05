@@ -44,7 +44,7 @@ def _scrape_all_player_positions(df_players: pd.DataFrame, df_all_players: pd.Da
         player_name = df_all_players.name[i]
         print(f'Progress: {i}/{len(df_all_players)}', end='\r')
         if player_name in df_players.name.values:
-            pass
+            continue
         game_id = df_all_players.game_id[i]
         player_code, player_position = _scrape_player_code_and_position(player_name=player_name, game_id=game_id)
         if player_position is not None:
