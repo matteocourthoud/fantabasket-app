@@ -29,8 +29,12 @@ def _scrape_player_code_and_position(player_name: str, game_id: str) -> Tuple[st
     time.sleep(4)
     game_url = f'{WEBSITE_URL}/boxscores/{game_id}.html'
     soup = BeautifulSoup(requests.get(game_url).content, "lxml")
-    player_url = soup.find(lambda tag: tag.name == 'a' and tag.text == player_name)['href']
-    player_code = re.findall(r"/([^/]+)\.html$", player_url)[0]
+    try:
+        player_url = soup.find(lambda tag: tag.name == 'a' and tag.text == player_name)['href']
+        player_code = re.findall(r"/([^/]+)\.html$", player_url)[0]
+    except:
+        print(player_name, game_url)
+        return "", ""
     soup = BeautifulSoup(requests.get(WEBSITE_URL + player_url).content, "lxml")
     player_info = str(soup.find('div', id='meta'))
     for player_position in ['Center', 'Forward', 'Guard']:
@@ -48,7 +52,7 @@ def _scrape_all_player_positions(df_players: pd.DataFrame, df_all_players: pd.Da
         game_id = df_all_players.game_id[i]
         player_code, player_position = _scrape_player_code_and_position(player_name=player_name, game_id=game_id)
         if player_position is not None:
-            df_player = pd.DataFrame({"name": [player_name], "code": [player_code], "position": [player_position[0]]})
+            df_player = pd.DataFrame({"name": [player_name], "code": [player_code], "position": [player_position]})
             df_players = pd.concat([df_players, df_player])
             df_players.to_csv(file_path, index=False)
     return df_players
@@ -75,3 +79,4 @@ def update_get_players(data_dir: str, season: int) -> pd.DataFrame():
     # Update name short
     df_players = _add_name_sort(df=df_players)
     df_players.to_csv(file_path, index=False)
+    return df_players
