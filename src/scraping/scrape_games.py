@@ -1,6 +1,6 @@
 """Scrape NBA games stats."""
 
-from datetime import datetime, date, timedelta
+import datetime
 import os
 import re
 import requests
@@ -36,8 +36,8 @@ def _save_data(data_dir: str, season: int, df: pd.DataFrame, file_name: str, ind
 def _get_unscraped_dates(df_calendar: pd.DataFrame, df_dates: pd.DataFrame) -> List[str]:
     """Generates a list of unscraped dates."""
     all_dates = df_calendar.date.values
-    latest_date = date.today() - timedelta(days=2)
-    all_dates = set([d for d in all_dates if datetime.strptime(d, "%Y-%m-%d").date() < latest_date])
+    latest_date = datetime.date.today() - datetime.timedelta(days=2)
+    all_dates = set([d for d in all_dates if datetime.datetime.strptime(d, "%Y-%m-%d").date() < latest_date])
     if df_dates.empty:
         return sorted(list(all_dates))
     scraped_dates = set(df_dates.date.values)
