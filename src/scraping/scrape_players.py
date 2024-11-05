@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 from typing import Tuple
 import requests
 import pandas as pd
@@ -25,6 +26,7 @@ def _get_df_all_players(data_dir: str, season: int):
 
 
 def _scrape_player_code_and_position(player_name: str, game_id: str) -> Tuple[str, str]:
+    time.sleep(4)
     game_url = f'{WEBSITE_URL}/boxscores/{game_id}.html'
     soup = BeautifulSoup(requests.get(game_url).content, "lxml")
     player_url = soup.find(lambda tag: tag.name == 'a' and tag.text == player_name)['href']
