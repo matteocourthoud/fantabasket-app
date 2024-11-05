@@ -1,13 +1,12 @@
-"""
-Compute Fantabasket statistics from NBA statistics.
-Author: Matteo Courthoud
-Date: 22/10/2022
-"""
+"""Compute Fantabasket statistics from NBA statistics."""
+
 import os.path
 import numpy as np
 import pandas as pd
 
 STATS_FILE = 'stats.csv'
+PLAYERS_FILE = 'players.csv'
+INITIAL_VALUES_FILE = 'initial_ratings.csv'
 CURRENT_STATS_FILE = 'current_stats.csv'
 
 
@@ -42,64 +41,61 @@ def _compute_fantabasket_score(df: pd.DataFrame) -> pd.Series:
     return fanta_score
 
 
-class FantabasketStats:
+def _init_fantabasket_values(past_season_stats_file: str) -> pd.DataFrame:
+    """Initializes the fantabasket values at the beginning of the season."""
+    df_past_season = pd.read_csv(past_season_stats_file)
+    df_past_season['fanta_score'] = _compute_fantabasket_score(df_past_season)
+    df_values = df_past_season.groupby('name', as_index=False).agg(fanta_value=('fanta_score', 'mean'))
+    df_values['fanta_value'] = np.maximum(df_values['fanta_value'] / 2, 4).fillna(4)
+    return df_values
 
-    def __init__(self, data_dir: str, season: int, df_stats: pd.DataFrame):
-        self._data_dir = data_dir
-        self._season = season
-        self._df_stats = df_stats
 
-    def _init_fantabasket_values(self, past_season_stats_file: str) -> pd.DataFrame:
-        """Initializes the fantabasket values at the beginning of the season."""
-        df_past_season = pd.read_csv(past_season_stats_file)
-        df_past_season['fanta_score'] = _compute_fantabasket_score(df_past_season)
-        df_values = df_past_season.groupby('name', as_index=False).agg(fanta_value=('fanta_score', 'mean'))
-        df_values['fanta_value'] = np.maximum(df_values['fanta_value'] / 2, 4).fillna(4)
-        return df_values
+def _load_initial_fantabasket_values(data_dir: str, season: int) -> pd.DataFrame:
+    df_initial_values = pd.read_csv(os.path.join(data_dir, str(season), INITIAL_VALUES_FILE))
+    df_players = pd.read_csv(os.path.join(data_dir, PLAYERS_FILE))
+    df_initial_values = pd.merge(df_initial_values, df_players, on="name_short", how="inner")
+    df_initial_values = df_initial_values.rename(columns={"initial_rating": "fanta_value"})
+    return df_initial_values[["name", "fanta_value"]]
 
-    def _compute_player_value(self, df_player: pd.DataFrame):
-        """Computes players Fantabasket value given the initial values and players' performance."""
-        for i in range(len(df_player)):  # TODO: loop over dates increasing
-            # If player has no initial value, replace it with half the first score
-            fanta_score = df_player.iloc[i, 2]  # TODO: move to loc
-            if np.isnan(df_player.iloc[i, 3]):
-                if np.isnan(fanta_score):
-                    df_player.iloc[i, 3] = 4
-                else:
-                    df_player.iloc[i, 3] = fanta_score / 2
-            fanta_value = df_player.iloc[i, 3]
-            df_player.iloc[i, 4] = compute_fantabasket_gain(fanta_value, fanta_score)
-            df_player.iloc[i, 3] = max(fanta_value + df_player.iloc[i, 4], 4)
-            if (i + 1) < len(df_player):
-                df_player.iloc[i + 1, 3] = df_player.iloc[i, 3]
-        return df_player
 
-    def _compute_season_stats(self, past_season_stats_file: str) -> pd.DataFrame:
-        """Computes Fantabasket statistics in the current season: value, score and gain over games."""
-        # Get players values
-        df_values = self._init_fantabasket_values(past_season_stats_file)
-        df_current_stats = self._df_stats
-        df_current_stats['fanta_score'] = _compute_fantabasket_score(df_current_stats)
-        df_current_stats = pd.merge(df_current_stats, df_values, on='name', how='left').sort_values('game_id')
+def _compute_player_value(df_player: pd.DataFrame) -> pd.DataFrame:
+    """Computes players Fantabasket value given the initial values and players' performance."""
+    for i in range(len(df_player)):  # TODO: loop over dates increasing
+        # If player has no initial value, replace it with half the first score
+        fanta_score = df_player.iloc[i, 2]  # TODO: move to loc
+        if np.isnan(df_player.iloc[i, 3]):
+            if np.isnan(fanta_score):
+                df_player.iloc[i, 3] = 4
+            else:
+                df_player.iloc[i, 3] = fanta_score / 2
+        fanta_value = df_player.iloc[i, 3]
+        df_player.iloc[i, 4] = compute_fantabasket_gain(fanta_value, fanta_score)
+        df_player.iloc[i, 3] = max(fanta_value + df_player.iloc[i, 4], 4)
+        if (i + 1) < len(df_player):
+            df_player.iloc[i + 1, 3] = df_player.iloc[i, 3]
+    return df_player
 
-        # Compute value and gains
-        df_current_stats['fanta_gain'] = 0.0
-        cols = ['name', 'game_id', 'fanta_score', 'fanta_value', 'fanta_gain']
-        for player in df_current_stats['name'].unique():
-            df_current_stats.loc[df_current_stats['name'] == player, cols] = self._compute_player_value(
-                df_current_stats.loc[df_current_stats['name'] == player, cols])
-        return df_current_stats
 
-    def update_get_fantabasket_stats(self, save: bool = True) -> pd.DataFrame:
-        """Computes and saves current season NBA statistics and Fantabasket scores."""
-        past_season_stats_file = os.path.join(self._data_dir, str(self._season - 1), STATS_FILE)
-        df_stats = self._compute_season_stats(past_season_stats_file)
-        if save:
-            df_stats.to_csv(os.path.join(self._data_dir, CURRENT_STATS_FILE), index=False)
-        return df_stats
+def _compute_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFrame) -> pd.DataFrame:
+    """Computes Fantabasket statistics in the current season: value, score and gain over games."""
+    # Get players values
+    df_values = _load_initial_fantabasket_values(data_dir=data_dir, season=season)
+    df_fanta_stats = df_stats.copy()
+    df_fanta_stats['fanta_score'] = _compute_fantabasket_score(df_fanta_stats)
+    df_fanta_stats = pd.merge(df_fanta_stats, df_values, on='name', how='left').sort_values('game_id')
 
-    def load_df(self, file_name):
-        """Loads dataframe from csv file."""
-        file_path = os.path.join(self._data_dir, str(self._season), file_name)
-        df = pd.read_csv(file_path)
-        return df
+    # Compute value and gains
+    df_fanta_stats['fanta_gain'] = 0.0
+    cols = ['name', 'game_id', 'fanta_score', 'fanta_value', 'fanta_gain']
+    for player in df_fanta_stats['name'].unique():
+        df_fanta_stats.loc[df_fanta_stats['name'] == player, cols] = _compute_player_value(
+            df_fanta_stats.loc[df_fanta_stats['name'] == player, cols])
+    return df_fanta_stats
+
+
+def update_get_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFrame, save: bool = True) -> pd.DataFrame:
+    """Computes and saves current season NBA statistics and Fantabasket scores."""
+    df_fanta_stats = _compute_fantabasket_stats(data_dir=data_dir, season=season, df_stats=df_stats)
+    if save:
+        df_fanta_stats.to_csv(os.path.join(data_dir, CURRENT_STATS_FILE), index=False)
+    return df_fanta_stats
