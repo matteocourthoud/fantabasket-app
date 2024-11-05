@@ -14,14 +14,9 @@ WEBSITE_URL = 'https://www.basketball-reference.com'
 
 
 def _get_df_all_players(data_dir: str, season: int):
-    # Import data
-    players_file_path = os.path.join(data_dir, PLAYERS_FILE)
-    if os.path.exists(players_file_path):
-        df_players = pd.read_csv(players_file_path, index_col=0)
-    else:
-        seasons = range(season, 2021, -1)
-        dfs_stats = [pd.read_csv(os.path.join(data_dir, str(s), STATS_FILE))[["name", "game_id"]] for s in seasons]
-        df_players = pd.concat(dfs_stats).drop_duplicates("name").reset_index(drop=True)
+    seasons = range(season, 2021, -1)
+    dfs_stats = [pd.read_csv(os.path.join(data_dir, str(s), STATS_FILE))[["name", "game_id"]] for s in seasons]
+    df_players = pd.concat(dfs_stats).drop_duplicates("name").reset_index(drop=True)
     return df_players
 
 
