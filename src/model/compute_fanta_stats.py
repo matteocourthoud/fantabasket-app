@@ -7,7 +7,7 @@ import pandas as pd
 STATS_FILE = 'stats.csv'
 PLAYERS_FILE = 'players.csv'
 INITIAL_VALUES_FILE = 'initial_ratings.csv'
-CURRENT_STATS_FILE = 'current_stats.csv'
+FANTABASKET_STATS_FILE = 'fantabasket_stats.csv'
 
 
 def compute_fantabasket_gain(old_value: float, score: float) -> float:
@@ -51,8 +51,15 @@ def _init_fantabasket_values(past_season_stats_file: str) -> pd.DataFrame:
 
 
 def _load_initial_fantabasket_values(data_dir: str, season: int) -> pd.DataFrame:
+    # Load initial values
     df_initial_values = pd.read_csv(os.path.join(data_dir, str(season), INITIAL_VALUES_FILE))
+    assert not df_initial_values.duplicated().any(), f"Duplicated values in {INITIAL_VALUES_FILE}"
+
+    # Load players
     df_players = pd.read_csv(os.path.join(data_dir, PLAYERS_FILE))
+    assert not df_players.duplicated().any, f"Duplicated values in {PLAYERS_FILE}"
+
+    # Merge datasets
     df_initial_values = pd.merge(df_initial_values, df_players, on="name_short", how="inner")
     df_initial_values = df_initial_values.rename(columns={"initial_rating": "fanta_value"})
     return df_initial_values[["name", "fanta_value"]]
@@ -96,6 +103,7 @@ def _compute_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFram
 def update_get_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFrame, save: bool = True) -> pd.DataFrame:
     """Computes and saves current season NBA statistics and Fantabasket scores."""
     df_fanta_stats = _compute_fantabasket_stats(data_dir=data_dir, season=season, df_stats=df_stats)
+    assert not df_fanta_stats.duplicated().any()
     if save:
-        df_fanta_stats.to_csv(os.path.join(data_dir, CURRENT_STATS_FILE), index=False)
+        df_fanta_stats.to_csv(os.path.join(data_dir, FANTABASKET_STATS_FILE), index=False)
     return df_fanta_stats
