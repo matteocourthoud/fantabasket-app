@@ -5,6 +5,7 @@ import os
 import re
 import requests
 import time
+import warnings
 import pandas as pd
 from typing import List
 from io import StringIO
@@ -36,7 +37,7 @@ def _save_data(data_dir: str, season: int, df: pd.DataFrame, file_name: str, ind
 def _get_unscraped_dates(df_calendar: pd.DataFrame, df_dates: pd.DataFrame) -> List[str]:
     """Generates a list of unscraped dates."""
     all_dates = df_calendar.date.values
-    latest_date = datetime.date.today() - datetime.timedelta(days=2)
+    latest_date = datetime.date.today()
     all_dates = set([d for d in all_dates if datetime.datetime.strptime(d, "%Y-%m-%d").date() < latest_date])
     if df_dates.empty:
         return sorted(list(all_dates))
@@ -123,7 +124,8 @@ def _scrape_nba_season(data_dir: str, season: int):
         time.sleep(4)
         games = _scrape_games_from_date(date=date)
         if not len(games):
-            raise ValueError(f"No games found on {date}.")
+            warnings.warn(f"No games found on {date}.")
+            continue
         unscraped_games = _get_unscraped_games(games=games, df_games=df_games)
         print(f"Scraping {date}: {len(games)} games.")
         for game in unscraped_games:
