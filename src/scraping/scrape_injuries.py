@@ -47,5 +47,5 @@ def update_get_nba_injuries(data_dir: str, update: bool = True) -> pd.DataFrame:
         df_injuries = _scrape_injuries()
         df_injuries.to_csv(file_path, index=False)
     df_injuries = pd.read_csv(file_path)
-    assert df_injuries.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
+    assert not df_injuries.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
     return df_injuries
