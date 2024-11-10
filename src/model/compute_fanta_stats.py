@@ -53,11 +53,11 @@ def _init_fantabasket_values(past_season_stats_file: str) -> pd.DataFrame:
 def _load_initial_fantabasket_values(data_dir: str, season: int) -> pd.DataFrame:
     # Load initial values
     df_initial_values = pd.read_csv(os.path.join(data_dir, str(season), INITIAL_VALUES_FILE))
-    assert not df_initial_values.duplicated().any(), f"Duplicated values in {INITIAL_VALUES_FILE}"
+    assert not df_initial_values.duplicated().any(), f"Duplicated rows in {INITIAL_VALUES_FILE}."
 
     # Load players
     df_players = pd.read_csv(os.path.join(data_dir, PLAYERS_FILE))
-    assert not df_players.duplicated().any, f"Duplicated values in {PLAYERS_FILE}"
+    assert not df_players.duplicated().any(), f"Duplicated rows in {PLAYERS_FILE}."
 
     # Merge datasets
     df_initial_values = pd.merge(df_initial_values, df_players, on="name_short", how="inner")
@@ -103,7 +103,7 @@ def _compute_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFram
 def update_get_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFrame, save: bool = True) -> pd.DataFrame:
     """Computes and saves current season NBA statistics and Fantabasket scores."""
     df_fanta_stats = _compute_fantabasket_stats(data_dir=data_dir, season=season, df_stats=df_stats)
-    assert not df_fanta_stats.duplicated().any()
+    assert not df_fanta_stats.duplicated().any(), "Duplicated values in fantabasket stats final table."
     if save:
         df_fanta_stats.to_csv(os.path.join(data_dir, FANTABASKET_STATS_FILE), index=False)
     return df_fanta_stats
