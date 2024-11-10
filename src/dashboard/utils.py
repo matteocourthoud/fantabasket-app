@@ -28,8 +28,8 @@ def get_fantabasket_stats(data_dir: str, season: int) -> pd.DataFrame:
 
     # Add predicted fantabasket gain
     df_gain = pd.read_csv(os.path.join(data_dir, PREDICTED_GAIN_FILE))[['name', 'predicted_gain', 'status']]
-    df = pd.merge(df_fanta_stats, df_gain, on='name', how='left')
-    df['status'] = df['status'].fillna('')
+    df_fanta_stats = pd.merge(df_fanta_stats, df_gain, on='name', how='left')
+    df_fanta_stats['status'] = df_fanta_stats['status'].fillna('')
     return df_fanta_stats
 
 
