@@ -83,12 +83,12 @@ def _scrape_initial_ratings() -> pd.DataFrame:
     return df_ratings
 
 
-def update_get_initial_ratings(data_dir: str, season: int) -> pd.DataFrame:
+def update_get_initial_ratings(data_dir: str, season: int, update: bool = False) -> pd.DataFrame:
     file_path = os.path.join(data_dir, str(season), INITIAL_RATINGS_FILE)
-    if os.path.exists(file_path):
-        return pd.read_csv(file_path)
-    else:
+    if update or not os.path.exists(file_path):
         print("Scraping initial ratings")
-        df_ratings = _scrape_initial_ratings()
-        df_ratings.round(1).to_csv(file_path, index=False)
-        return df_ratings
+        df_initial_ratings = _scrape_initial_ratings()
+        df_initial_ratings.round(1).to_csv(file_path, index=False)
+    df_initial_ratings = pd.read_csv(file_path)
+    assert not df_initial_ratings.duplicated(subset=["name_short"]).any(), f"Duplicated 'name_short' in {file_path}."
+    return df_initial_ratings

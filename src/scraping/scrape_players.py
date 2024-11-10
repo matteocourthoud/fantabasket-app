@@ -72,20 +72,30 @@ def _add_name_sort(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def update_get_players(data_dir: str, season: int) -> pd.DataFrame():
-    # Import / initialize dataframes
+def get_players(data_dir: str, season: int) -> pd.DataFrame():
     df_all_players = _get_df_all_players(data_dir=data_dir, season=season)
     file_path = os.path.join(data_dir, PLAYERS_FILE)
-    if os.path.exists(file_path):
+    if not os.path.exists(file_path):
         df_players = pd.read_csv(file_path)
     else:
         df_players = pd.DataFrame(columns=["name", "name_short", "code", "position"])
 
     # Scrape players
-    df_players = _scrape_all_player_positions(df_players=df_players, df_all_players=df_all_players, file_path=file_path)
+    df_players = _scrape_all_player_positions(df_players=df_players, df_all_players=df_all_players,
+                                              file_path=file_path)
     print("Players database is up to date!")
 
     # Update name short
     df_players = _add_name_sort(df=df_players)
-    df_players.to_csv(file_path, index=False)
+    return df_players
+
+
+def update_get_players(data_dir: str, season: int, update: bool = False) -> pd.DataFrame():
+    # Import / initialize dataframes
+    file_path = os.path.join(data_dir, PLAYERS_FILE)
+    if update or not os.path.exists(file_path):
+        df_players = get_players(data_dir=data_dir, season=season)
+        df_players.to_csv(file_path, index=False)
+    df_players = pd.read_csv(file_path)
+    assert not df_players.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
     return df_players

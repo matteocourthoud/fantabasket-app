@@ -36,19 +36,16 @@ def _scrape_injuries() -> pd.DataFrame:
     dfs = pd.read_html(WEBSITE_URL)
     df_injuries = _combine_dfs_injuries(dfs)
     df_injuries = _clean_df_injuries(df_injuries)
-    return df_injuries
+    return df_injuries.sort_values(by="name", ignore_index=True)
 
 
-def update_get_nba_injuries(data_dir: str, update: bool = False) -> pd.DataFrame:
+def update_get_nba_injuries(data_dir: str, update: bool = True) -> pd.DataFrame:
     """Updates and returns dataframe with injured NBA players."""
     file_path = os.path.join(data_dir, INJURIES_FILE)
-    if update:
+    if update or not os.path.exists(file_path):
         print("Scraping injuries...")
-        try:
-            df_injuries = _scrape_injuries()
-            df_injuries = df_injuries.sort_values(by="name", ignore_index=True)
-            df_injuries.to_csv(file_path, index=False)
-        except Exception as e:
-            print(e)
+        df_injuries = _scrape_injuries()
+        df_injuries.to_csv(file_path, index=False)
     df_injuries = pd.read_csv(file_path)
+    assert df_injuries.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
     return df_injuries

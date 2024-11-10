@@ -58,12 +58,13 @@ def scrape_nba_calendar(season: int) -> pd.DataFrame:
     return df_calendar
 
 
-def update_get_nba_calendar(data_dir: str, season: int) -> pd.DataFrame:
+def update_get_nba_calendar(data_dir: str, season: int, update: bool = False) -> pd.DataFrame:
     """Loads NBA calendar."""
     file_path = os.path.join(data_dir, str(season), CALENDAR_FILE)
-    if not os.path.exists(file_path):
+    if update or not os.path.exists(file_path):
         df_calendar = scrape_nba_calendar(season=season)
         df_calendar = df_calendar.sort_values(by="date", ignore_index=True)
         df_calendar.to_csv(file_path, index=False)
     df_calendar = pd.read_csv(file_path)
+    assert not df_calendar.duplicated().any(), f"Duplicated rows in {file_path}"
     return df_calendar

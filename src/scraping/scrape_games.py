@@ -5,7 +5,6 @@ import os
 import re
 import requests
 import time
-import warnings
 import pandas as pd
 from typing import List
 from io import StringIO
@@ -124,7 +123,7 @@ def _scrape_nba_season(data_dir: str, season: int):
         time.sleep(4)
         games = _scrape_games_from_date(date=date)
         if not len(games):
-            warnings.warn(f"No games found on {date}.")
+            print(f"\033[93mWarning: No games found on {date}.\033[0m")
             continue
         unscraped_games = _get_unscraped_games(games=games, df_games=df_games)
         print(f"Scraping {date}: {len(games)} games.")
@@ -150,4 +149,5 @@ def update_get_nba_stats(data_dir: str, season: int):
     print("Game stats up to date!")
     file_path = os.path.join(data_dir, str(season), STATS_FILE)
     df_stats = pd.read_csv(file_path)
+    assert not df_stats.duplicated(subset=["game_id", "name"]).any(), f"Duplicated 'name'-'game_id' in {file_path}."
     return df_stats

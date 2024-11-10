@@ -58,13 +58,22 @@ def _scrape_next_lineups(data_dir: str) -> pd.DataFrame:
     return df_next_lineups
 
 
-def update_get_next_lineups(data_dir: str, season: int) -> pd.DataFrame:
+def get_next_lineups(data_dir: str, season: int) -> pd.DataFrame:
     """Scrape NBA lineups from https://basketballmonster.com/nbalineups."""
-    print("Scraping lineups...")
-
     df_last_lineups = _get_df_last_lineups(data_dir=data_dir, season=season)
     df_next_lineups = _scrape_next_lineups(data_dir=data_dir)
     df_last_lineups_not_updated = df_last_lineups[~df_last_lineups.team.isin(df_next_lineups.team.unique())]
     df_lineups = pd.concat([df_last_lineups_not_updated, df_next_lineups]).sort_values("team").reset_index(drop=True)
-    df_lineups.to_csv(os.path.join(data_dir, LINEUPS_FILE), index=False)
+    return df_lineups
+
+
+def update_get_next_lineups(data_dir: str, season: int, update: bool = True) -> pd.DataFrame:
+    """Scrape NBA lineups from https://basketballmonster.com/nbalineups."""
+    file_path = os.path.join(data_dir, LINEUPS_FILE)
+    if update or not os.path.exists(file_path):
+        print("Scraping lineups...")
+        df_lineups = get_next_lineups(data_dir=data_dir, season=season)
+        df_lineups.to_csv(file_path, index=False)
+    df_lineups = pd.read_csv(file_path)
+    assert not df_lineups.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
     return df_lineups
