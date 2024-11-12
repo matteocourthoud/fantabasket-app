@@ -1,69 +1,32 @@
-"""
-Predict players for fanta.
-Author: Matteo Courthoud
-Date: 22/10/2022
-"""
+"""Fantabasket dashboard."""
 
-import datetime
 import numpy as np
 import pandas as pd
 from dash import Dash, Input, Output, dcc, html, dash_table
 import plotly.express as px
 import plotly.graph_objects as go
 
+import utils
 
+
+# Set parameters
 NUM_PLAYERS = 8
 NUM_VISIBLE_PLAYERS = 3
-SEASON = 2023
-PLAYERS_FILE = '../data/players.csv'
-GAMES_FILE = '../data/%i/games.csv'
-INJURIES_FILE = '../data/injuries.csv'
-CURRENT_STATS_FILE = '../data/current_stats.csv'
-PREDICTED_GAIN_FILE = '../data/predicted_gain.csv'
+DATA_DIR = "../data"
+SEASON = 2024
 
 
-def add_date_position(df: pd.DataFrame) -> pd.DataFrame:
-    # Add dates
-    df_dates = pd.read_csv(GAMES_FILE % SEASON)[['date', 'game_id']].drop_duplicates()
-    df_dates['date'] = pd.to_datetime(df_dates['date'])
-    df = pd.merge(df, df_dates, on='game_id', how='right')
+# Initialize datasets
+df_plot = utils.get_df_timeseries_plot(data_dir=DATA_DIR, season=SEASON)
+df_table = utils.get_df_table(data_dir=DATA_DIR, season=SEASON)
 
-    # Add positions
-    df = pd.merge(df, pd.read_csv(PLAYERS_FILE), on='name', how='left')
-    return df
-
-
-def import_data() -> pd.DataFrame:
-    df = pd.read_csv(CURRENT_STATS_FILE)
-    df = add_date_position(df)
-    df['date'] = pd.to_datetime(df['date'])
-    df['time_delta'] = (datetime.datetime.today() - df.date).dt.days
-    df['last_price'] = df.groupby('name')['fanta_value'].transform('last')
-    df_gain = pd.read_csv(PREDICTED_GAIN_FILE)[['name', 'predicted_gain', 'status']]
-    df = pd.merge(df, df_gain, on='name', how='left')
-    df['status'] = df['status'].fillna('')
-    return df
-
-
-# Init
-df = import_data()
-df_plot = df.copy()
-df_plot['name'] = df_plot['name'] + ' - ' + df_plot['last_price'].apply(lambda x: '{0:.1f}'.format(x))
+# Set other things
 roles = ["All", "C", "F", "G"]
 metrics = {'Predicted Gain': 'predicted_gain', 
            'Median Gain': 'median_gain',
            'Average Score': 'mean_score',
            'fanta Value': 'fanta_value'}
 
-df_last = df.copy()
-df_last['last_date'] = df_last.groupby('name')['date'].transform('max')
-df_last = df_last[df_last.date == df_last.last_date]
-df_last = df_last[df_last.date >= (pd.Timestamp.now().normalize() - pd.Timedelta(3, 'd'))]
-df_last = df_last[['name', 'position', 'fanta_value', 'fanta_score', 'fanta_gain',
-                   'mp', 'pts', 'trb', 'ast', 'stl', 'blk', 'tov', 'pf']]
-df_last.columns = ['Name', 'Role', 'Value', 'Score', 'Gain',
-                   'min', 'pts', 'trb', 'ast', 'stl', 'blk', 'tov', 'pf']
-df_last = df_last.sort_values('Gain', ascending=False).reset_index(drop=True).round(1)
 
 
 external_stylesheets = [
@@ -150,8 +113,8 @@ data_div = html.Div(
             children=[
                 html.Div(
                     children=dash_table.DataTable(
-                        data=df_last.to_dict("records"),
-                        columns=[{"name": i, "id": i} for i in df_last.columns], 
+                        data=df_table.to_dict("records"),
+                        columns=[{"name": i, "id": i} for i in df_table.columns],
                         cell_selectable=False,
                         sort_action="native",
                         page_current=0,
@@ -173,16 +136,16 @@ data_div = html.Div(
                         style_data_conditional=[
                                 {
                                     'if': {
-                                        'filter_query': '{Gain} > 0',
-                                        'column_id': 'Gain'
+                                        'filter_query': '{Change} > 0',
+                                        'column_id': 'Change'
                                     },
                                     'color': 'green',
                                     'fontWeight': 'bold'
                                 },
                                 {
                                     'if': {
-                                        'filter_query': '{Gain} < 0',
-                                        'column_id': 'Gain'
+                                        'filter_query': '{Change} < 0',
+                                        'column_id': 'Change'
                                     },
                                     'color': 'tomato',
                                     'fontWeight': 'bold'
@@ -192,7 +155,7 @@ data_div = html.Div(
                                     "fontWeight": "bold",
                                 },
                                 {
-                                    "if": {"column_id": "Score"},
+                                    "if": {"column_id": "Value"},
                                     "fontWeight": "bold",
                                 },
                             ]
