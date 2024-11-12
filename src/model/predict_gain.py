@@ -106,7 +106,7 @@ def _predict_gain(df: pd.DataFrame, model):
     df_test['predicted_gain'] = [compute_fantabasket_gain(v, s) for (v, s) in zip(df_test.fanta_value, df_test.predicted_score)]
     df_test.loc[(~pd.isna(df_test.status)) & (df_test.status != "gtd"), 'predicted_gain'] = -0.1
     df_test = df_test.sort_values('predicted_gain', ascending=False)
-    df_test = df_test[['name', 'predicted_gain', 'predicted_score', 'fanta_value', 'start', 'status']]
+    df_test = df_test[['name', 'predicted_gain', 'predicted_score', 'fanta_value', 'start', 'status', "opponent_team"]]
     return df_test
 
 

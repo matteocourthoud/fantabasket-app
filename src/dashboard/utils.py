@@ -51,7 +51,7 @@ def get_fantabasket_stats(data_dir: str, season: int) -> pd.DataFrame:
     df_fanta_stats['last_price'] = df_fanta_stats.groupby('name')['fanta_value'].transform('last')
 
     # Add predicted fantabasket gain
-    df_gain = pd.read_csv(os.path.join(data_dir, PREDICTED_GAIN_FILE))[['name', 'predicted_gain', 'status']]
+    df_gain = pd.read_csv(os.path.join(data_dir, PREDICTED_GAIN_FILE))[['name', 'predicted_gain', 'status', "opponent_team"]]
     df_fanta_stats = pd.merge(df_fanta_stats, df_gain, on='name', how='left')
     df_fanta_stats['status'] = df_fanta_stats['status'].fillna('')
     return df_fanta_stats
@@ -176,7 +176,7 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     # Select the last game for each player
     df_table = df_fanta_stats.groupby("name", as_index=False)["date"].max()
     df_table = pd.merge(df_fanta_stats, df_table, on=["name", "date"], how="inner")
-    df_table = df_table[["name", "last_price", "predicted_gain", "streak"]]
+    df_table = df_table[["name", "last_price", "predicted_gain", "streak", "opponent_team"]]
 
     # Add status changes
     df_status_changes = get_df_status_changes(data_dir=data_dir, season=season)
@@ -198,8 +198,8 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     df_table = pd.merge(df_table, df_players[["name", "position"]], on='name', how='left')
 
     # Clean table
-    df_table = df_table[["name", "position", "last_price", "predicted_gain", "streak", "status", "start", "status_change", "first_substitute"]]
-    df_table.columns = ["Name", "Role", "Value", "Gain", "Streak", "Injury", "Start", "Change", "Substitute"]
+    df_table = df_table[["name", "position", "last_price", "predicted_gain", "streak", "status", "start", "status_change", "first_substitute", "opponent_team"]]
+    df_table.columns = ["Name", "Role", "Value", "Gain", "Streak", "Injury", "Start", "Change", "Substitute", "Opponent"]
     df_table = df_table.sort_values("Gain", ascending=False).reset_index(drop=True)
     df_table["Value"] = df_table["Value"].round(1)
     df_table["Gain"] = df_table["Gain"].round(2)
