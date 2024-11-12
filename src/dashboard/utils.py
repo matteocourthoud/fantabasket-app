@@ -51,7 +51,7 @@ def get_fantabasket_stats(data_dir: str, season: int) -> pd.DataFrame:
     df_fanta_stats['last_price'] = df_fanta_stats.groupby('name')['fanta_value'].transform('last')
 
     # Add predicted fantabasket gain
-    df_gain = pd.read_csv(os.path.join(data_dir, PREDICTED_GAIN_FILE))[['name', 'predicted_gain', 'status', "opponent_team"]]
+    df_gain = pd.read_csv(os.path.join(data_dir, PREDICTED_GAIN_FILE))[['name', 'predicted_gain', 'status']]
     df_fanta_stats = pd.merge(df_fanta_stats, df_gain, on='name', how='left')
     df_fanta_stats['status'] = df_fanta_stats['status'].fillna('')
     return df_fanta_stats
@@ -169,6 +169,7 @@ def add_starters(df: pd.DataFrame, data_dir: str) -> pd.DataFrame:
 def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     """Gets data to show in table in dashboard."""
     df_fanta_stats = get_fantabasket_stats(data_dir=data_dir, season=season)
+    print(df_fanta_stats.columns)
 
     # Compute streak
     df_fanta_stats = compute_streak(df_fanta_stats)
