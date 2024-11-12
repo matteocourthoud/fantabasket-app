@@ -81,7 +81,8 @@ def _get_next_match_per_player(df_stats: pd.DataFrame, data_dir: str, season: in
 
     # Add next status
     df_lineups = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE))
-    df_player_next_match = pd.merge(df_player_next_match, df_lineups, on="name", how="left")
+    df_lineups["start"] = 1
+    df_player_next_match = pd.merge(df_player_next_match, df_lineups[["name", "start"]], on="name", how="left")
     df_player_next_match["start"] = df_player_next_match["start"].fillna(0)
     return df_player_next_match
 
