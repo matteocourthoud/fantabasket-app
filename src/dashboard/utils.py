@@ -197,7 +197,7 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     # Clean table
     df_table = df_table[["name", "position", "last_price", "predicted_gain", "streak", "status", "status_change", "first_substitute"]]
     df_table.columns = ["Name", "Role", "Value", "Gain", "Streak", "Status", "Change", "Substitute"]
-    df_table = df_table.sort_values("Streak", ascending=False).reset_index(drop=True)
+    df_table = df_table.sort_values("Gain", ascending=False).reset_index(drop=True)
     df_table["Value"] = df_table["Gain"].round(1)
     df_table["Gain"] = df_table["Gain"].round(2)
     return df_table
