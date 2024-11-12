@@ -36,7 +36,7 @@ def _get_season_stats_with_injuries(data_dir: str, season: int) -> pd.DataFrame:
     return df_stats
 
 
-def _get_next_match(data_dir: str, season: int) -> pd.DataFrame:
+def _get_next_opponent(data_dir: str, season: int) -> pd.DataFrame:
     """Imports dataframe with information on the next matches."""
     df_calendar = pd.read_csv(os.path.join(data_dir, str(season), CALENDAR_FILE))
     df_calendar['date'] = pd.to_datetime(df_calendar['date'])
@@ -56,11 +56,33 @@ def _get_next_match(data_dir: str, season: int) -> pd.DataFrame:
     return df
 
 
+def _get_next_opponent(data_dir: str, season: int) -> pd.DataFrame:
+    """Imports dataframe with information on the next matches."""
+    df_calendar = pd.read_csv(os.path.join(data_dir, str(season), CALENDAR_FILE))
+    df_calendar['date'] = pd.to_datetime(df_calendar['date'])
+    temp1 = df_calendar.rename(columns={'team_visitor': 'own_team', 'team_home': 'opponent_team'})
+    temp2 = df_calendar.rename(columns={'team_visitor': 'opponent_team', 'team_home': 'own_team'})
+    df = pd.concat([temp1, temp2], ignore_index=True)
+
+    # Get first matchup for each "own_team"
+    df = df.sort_values('date')
+    df = df[df.date >= pd.to_datetime('today')]
+    df = df.groupby('own_team', as_index=False)[['opponent_team']].first()
+    return df
+
+
 def _get_next_match_per_player(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
     """Check next match for each player."""
     df_player_next_match = df_stats.groupby('name', as_index=False)[['fanta_value', 'own_team', 'status']].last()
-    df_next_match = _get_next_match(data_dir=data_dir, season=season)
+
+    # Add next opponent
+    df_next_match = _get_next_opponent(data_dir=data_dir, season=season)
     df_player_next_match = pd.merge(df_player_next_match, df_next_match, on='own_team', how='left')
+
+    # Add next status
+    df_lineups = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE))
+    df_player_next_match = pd.merge(df_player_next_match, df_lineups, on="name", how="left")
+    df_player_next_match["start"] = df_player_next_match["start"].fillna(0)
     return df_player_next_match
 
 
