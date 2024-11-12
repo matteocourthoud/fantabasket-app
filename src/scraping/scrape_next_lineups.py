@@ -29,16 +29,25 @@ def _get_df_last_lineups(data_dir: str, season: int) -> pd.DataFrame:
     return df_lineups
 
 
-def _remove_suffixes(strings: list[str]) -> list[str]:
-    suffixes = ["Q", "P", "IN", "Off Inj"]
+def _remove_suffixes(strings: list[str]) -> tuple[list[str], list[str]]:
+    suffixes = {
+        "Q": "questionable",
+        "P": "probable",
+        "IN": "injured",
+        "Off Inj": "off injury",
+    }
     cleaned_strings = []
+    statuses = []
     for s in strings:
-        for suffix in suffixes:
+        status = ""
+        for suffix in suffixes.keys():
             if s.endswith(suffix):
                 s = s[:-len(suffix)]  # Remove the suffix
+                status = suffixes[suffix]
                 break  # Exit the loop once a suffix is removed
+        statuses.append(status)
         cleaned_strings.append(s.strip())
-    return cleaned_strings
+    return cleaned_strings, statuses
 
 
 def _scrape_next_lineups(data_dir: str) -> pd.DataFrame:
@@ -52,8 +61,8 @@ def _scrape_next_lineups(data_dir: str) -> pd.DataFrame:
             team_name = df_teams.loc[df_teams.team_short == team_short, "team"].values[0]
             if df.iloc[:, col].isnull().any():
                 continue
-            players = _remove_suffixes(df.iloc[:, col].to_list())
-            temp = pd.DataFrame({"team": [team_name]*5, "name": players})
+            players, statuses = _remove_suffixes(df.iloc[:, col].to_list())
+            temp = pd.DataFrame({"team": [team_name]*5, "name": players, "status": statuses})
             df_next_lineups = pd.concat([df_next_lineups, temp])
     return df_next_lineups
 
