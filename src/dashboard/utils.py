@@ -187,7 +187,7 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     df_table = pd.merge(df_table, df_injuries[["name", "status"]], on='name', how='left')
 
     # Add starters
-    df_table = add_starters(df=df_table)
+    df_table = add_starters(df=df_table, data_dir=data_dir)
 
     # Add main substitute
     df_substitutes = get_substitute_players(df=df_fanta_stats)
