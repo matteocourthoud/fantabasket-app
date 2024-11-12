@@ -8,17 +8,24 @@ PLAYERS_FILE = 'players.csv'
 GAMES_FILE = 'games.csv'
 FANTABASKET_STATS_FILE = 'fantabasket_stats.csv'
 PREDICTED_GAIN_FILE = 'predicted_gain.csv'
+LINEUPS_FILE = "lineups.csv"
+
+
+def add_game_dates_to_stats(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
+    """Add game dates to df_fanta_stats."""
+    file_path = os.path.join(data_dir, str(season), GAMES_FILE)
+    df_games = pd.read_csv(file_path)[['date', 'game_id']].drop_duplicates()
+    df_games['date'] = pd.to_datetime(df_games['date'])
+    df_stats = pd.merge(df_stats, df_games, on='game_id', how='right')
+    return df_stats
 
 
 def get_fantabasket_stats(data_dir: str, season: int) -> pd.DataFrame:
     """Gets dataset with fantabasket statistics, with game dates."""
     df_fanta_stats = pd.read_csv(os.path.join(data_dir, FANTABASKET_STATS_FILE))
 
-    # Add game dates to df_fanta_stats
-    games_path = os.path.join(data_dir, str(season), GAMES_FILE)
-    df_dates = pd.read_csv(games_path)[['date', 'game_id']].drop_duplicates()
-    df_dates['date'] = pd.to_datetime(df_dates['date'])
-    df_fanta_stats = pd.merge(df_fanta_stats, df_dates, on='game_id', how='right')
+    # Add game dates to stats
+    df_fanta_stats = add_game_dates_to_stats(df_stats=df_fanta_stats, data_dir=data_dir, season=season)
 
     # Add time delta for filtering
     df_fanta_stats['time_delta'] = (datetime.today() - df_fanta_stats.date).dt.days
@@ -66,3 +73,27 @@ def get_df_stats_table(data_dir: str, season: int) -> pd.DataFrame:
                        'min', 'pts', 'trb', 'ast', 'stl', 'blk', 'tov', 'pf']
     df_stats_table = df_stats_table.sort_values('Gain', ascending=False).reset_index(drop=True).round(1)
     return df_stats_table
+
+
+def get_df_status_changes(data_dir: str, season: int) -> pd.DataFrame:
+    """Get data on players whose status changes between the last match and the next."""
+    # Get the last player status
+    df_last_status = get_players_last_stats(data_dir=data_dir, season=season)
+    df_last_status = df_last_status[df_last_status.time_delta < 4]
+    df_last_status = df_last_status[["name", "start"]]
+    df_last_status = df_last_status.rename(columns={"start": "start_last"})
+
+    # Get the next player status
+    df_next_status = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE))[["name"]]
+    df_next_status["start_next"] = 1
+
+    # Get only players whose status has changes
+    df_status_changes = pd.merge(df_last_status, df_next_status, on="name", how="left")
+    df_status_changes["start_next"] = df_status_changes["start_next"].fillna(0).astype(int)
+    df_status_changes = df_status_changes[df_status_changes.start_last != df_status_changes.start_next]
+
+    # Add players positions to df_fanta_stats
+    players_path = os.path.join(data_dir, PLAYERS_FILE)
+    df_positions = pd.read_csv(players_path)[["name", "position"]]
+    df_status_changes = pd.merge(df_status_changes, df_positions, on='name', how='left')
+    return df_status_changes
