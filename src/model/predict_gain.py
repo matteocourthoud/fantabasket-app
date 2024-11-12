@@ -50,7 +50,6 @@ def _get_next_match(data_dir: str, season: int) -> pd.DataFrame:
     df = df.groupby('own_team', as_index=False)[['opponent_team']].first()
 
     # Get starting-5 status
-    df = df.drop(columns="start")
     df_lineups = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE))
     df = pd.merge(df, df_lineups, on="name", how="left")
     df["start"] = df["start"].fillna(0)
