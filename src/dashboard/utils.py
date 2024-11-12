@@ -10,6 +10,7 @@ GAMES_FILE = 'games.csv'
 FANTABASKET_STATS_FILE = 'fantabasket_stats.csv'
 PREDICTED_GAIN_FILE = 'predicted_gain.csv'
 LINEUPS_FILE = "lineups.csv"
+INJURIES_FILE = "injuries.csv"
 
 
 def add_game_dates_and_teams_to_stats(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
@@ -106,10 +107,97 @@ def get_df_status_changes(data_dir: str, season: int) -> pd.DataFrame:
     # Get only players whose status has changes
     df_status_changes = pd.merge(df_last_status, df_next_status, on="name", how="left")
     df_status_changes["start_next"] = df_status_changes["start_next"].fillna(0).astype(int)
-    df_status_changes = df_status_changes[df_status_changes.start_last != df_status_changes.start_next]
+    df_status_changes["status_change"] = df_status_changes["start_next"] - df_status_changes["start_last"]
+    return df_status_changes
+
+
+def get_substitute_players(df: pd.DataFrame) -> pd.DataFrame:
+    """For each player, computes the player with highest and lowest minute correlation."""
+    for col in ["name", "game_id", "mp", "own_team"]:
+        assert col in df.columns, f"Column {col} not found!"
+
+    df_players = pd.DataFrame()
+    for team in df.own_team.unique():
+        # Get table of minutes correlation within each team
+        df_team = df[df.own_team == team].copy()
+        df_team = df_team.pivot(index="game_id", columns="name", values="mp").fillna(0)
+        df_team.columns = [''.join(col).strip() for col in df_team.columns]
+        minute_correlations = df_team.corr().fillna(0).values
+        minute_correlations[minute_correlations == 1] = 0
+
+        # Extract players with highest and lowest minute correlation
+        players = np.array(df_team.columns)
+        temp = pd.DataFrame({
+            "name": players,
+            "first_substitute": players[minute_correlations.argmin(axis=1)],
+            "first_complement": players[minute_correlations.argmax(axis=1)],
+        })
+        df_players = pd.concat([df_players, temp], ignore_index=True)
+    return df_players
+
+
+def compute_streak(df: pd.DataFrame) -> pd.DataFrame:
+    """Computes fantabasket streak"""
+    for col in ["name", "date", "fanta_gain"]:
+        assert col in df.columns, f"Column {col} not found!"
+
+    # Define streak function
+    def compute_streak_by_group(group: pd.Series) -> pd.Series:
+        group['streak'] = (group["fanta_gain"] > 0).astype(int)
+        group['streak'] = group['streak'] * (
+                    group['streak'].cumsum() - group['streak'].cumsum().where(group['streak'] == 0).ffill().fillna(
+                0)).astype(int)
+        return group
+
+    # Compute streak for each customer
+    df = df.sort_values(["name", "date"], ascending=True)
+    df = df.groupby("name", group_keys=False).apply(compute_streak_by_group)
+    return df
+
+
+def add_injury_status(df: pd.DataFrame, data_dir: str) -> pd.DataFrame:
+    """Adds the injury status to each player."""
+    df_injuries = pd.read_csv(os.path.join(data_dir, INJURIES_FILE))
+    df = pd.merge(df, df_injuries[["name", "status"]], on='name', how='left')
+
+    df_lineups = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE)).rename(columns={"status": "inj_status"})
+    df = pd.merge(df, df_lineups[["name", "inj_status"]], on='name', how='left')
+    df.loc[df.status.isna(), "status"] = df.loc[df.status.isna(), "inj_status"]
+    df = df.drop(columns=["inj_status"])
+    return df
+
+
+def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
+    """Gets data to show in table in dashboard."""
+    df_fanta_stats = get_fantabasket_stats(data_dir=data_dir, season=season)
+
+    # Compute streak
+    df_fanta_stats = compute_streak(df_fanta_stats)
+
+    # Select the last game for each player
+    df_table = df_fanta_stats.groupby("name", as_index=False)["date"].max()
+    df_table = pd.merge(df_fanta_stats, df_table, on=["name", "date"], how="inner")
+    df_table = df_table[["name", "last_price", "predicted_gain", "streak"]]
+
+    # Add status changes
+    df_status_changes = get_df_status_changes(data_dir=data_dir, season=season)
+    df_table = pd.merge(df_table, df_status_changes[["name", "status_change"]], on='name', how='left')
+
+    # Add injuries
+    df_table = add_injury_status(df=df_table, data_dir=data_dir)
+
+    # Add main substitute
+    df_substitutes = get_substitute_players(df=df_fanta_stats)
+    df_table = pd.merge(df_table, df_substitutes[["name", "first_substitute"]], on='name', how='left')
 
     # Add players positions to df_fanta_stats
-    players_path = os.path.join(data_dir, PLAYERS_FILE)
-    df_positions = pd.read_csv(players_path)[["name", "position"]]
-    df_status_changes = pd.merge(df_status_changes, df_positions, on='name', how='left')
-    return df_status_changes
+    df_players = pd.read_csv(os.path.join(data_dir, "players.csv"))
+    df_table = pd.merge(df_table, df_players[["name", "position"]], on='name', how='left')
+
+    # Clean table
+    df_table = df_table[["name", "position", "last_price", "predicted_gain", "streak", "status", "status_change", "first_substitute"]]
+    df_table.columns = ["Name", "Role", "Value", "Gain", "Streak", "Status", "Change", "Substitute"]
+    df_table = df_table.sort_values("Streak", ascending=False).reset_index(drop=True)
+    df_table["Value"] = df_table["Gain"].round(1)
+    df_table["Gain"] = df_table["Gain"].round(2)
+    return df_table
