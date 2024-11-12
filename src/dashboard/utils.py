@@ -155,13 +155,12 @@ def compute_streak(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_injury_status(df: pd.DataFrame, data_dir: str) -> pd.DataFrame:
+def add_starters(df: pd.DataFrame, data_dir: str) -> pd.DataFrame:
     """Adds the injury status to each player."""
-    df_injuries = pd.read_csv(os.path.join(data_dir, INJURIES_FILE))
-    df = pd.merge(df, df_injuries[["name", "status"]], on='name', how='left')
-
     df_lineups = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE)).rename(columns={"status": "inj_status"})
-    df = pd.merge(df, df_lineups[["name", "inj_status"]], on='name', how='left')
+    df_lineups["start"] = 1
+    df = pd.merge(df, df_lineups[["name", "inj_status", "start"]], on='name', how='left')
+    df["start"] = df["start"].fillna(0)
     df.loc[df.status.isna(), "status"] = df.loc[df.status.isna(), "inj_status"]
     df = df.drop(columns=["inj_status"])
     return df
@@ -184,7 +183,11 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     df_table = pd.merge(df_table, df_status_changes[["name", "status_change"]], on='name', how='left')
 
     # Add injuries
-    df_table = add_injury_status(df=df_table, data_dir=data_dir)
+    df_injuries = pd.read_csv(os.path.join(data_dir, INJURIES_FILE))
+    df_table = pd.merge(df_table, df_injuries[["name", "status"]], on='name', how='left')
+
+    # Add starters
+    df_table = add_starters(df=df_table)
 
     # Add main substitute
     df_substitutes = get_substitute_players(df=df_fanta_stats)
@@ -195,8 +198,8 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     df_table = pd.merge(df_table, df_players[["name", "position"]], on='name', how='left')
 
     # Clean table
-    df_table = df_table[["name", "position", "last_price", "predicted_gain", "streak", "status", "status_change", "first_substitute"]]
-    df_table.columns = ["Name", "Role", "Value", "Gain", "Streak", "Status", "Change", "Substitute"]
+    df_table = df_table[["name", "position", "last_price", "predicted_gain", "streak", "start", "status", "status_change", "first_substitute"]]
+    df_table.columns = ["Name", "Role", "Value", "Gain", "Streak", "Start", "Status", "Change", "Substitute"]
     df_table = df_table.sort_values("Gain", ascending=False).reset_index(drop=True)
     df_table["Value"] = df_table["Gain"].round(1)
     df_table["Gain"] = df_table["Gain"].round(2)
