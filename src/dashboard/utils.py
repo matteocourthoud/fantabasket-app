@@ -2,6 +2,7 @@
 import os
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 
 PLAYERS_FILE = 'players.csv'
@@ -11,10 +12,25 @@ PREDICTED_GAIN_FILE = 'predicted_gain.csv'
 LINEUPS_FILE = "lineups.csv"
 
 
-def add_game_dates_to_stats(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
-    """Add game dates to df_fanta_stats."""
+def add_game_dates_and_teams_to_stats(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
+    """Add game dates and teams to df_fanta_stats."""
+    # Merge games file to stats file
     file_path = os.path.join(data_dir, str(season), GAMES_FILE)
     df_games = pd.read_csv(file_path)[['date', 'game_id']].drop_duplicates()
+    df_games['date'] = pd.to_datetime(df_games['date'])
+    df_stats = pd.merge(df_stats, df_games, on='game_id', how='right')
+
+    # Compute winner and loser
+    df_stats['own_team'] = np.where(df_stats.win == 1, df_stats.winner, df_stats.loser)
+    df_stats['opponent_team'] = np.where(df_stats.win == 1, df_stats.loser, df_stats.winner)
+    df_stats.drop(["pts_winner", "pts_lower"])
+    return df_stats
+
+
+def add_teams_to_stats(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
+    """Add game dates to df_fanta_stats."""
+    file_path = os.path.join(data_dir, str(season), GAMES_FILE)
+    df_games = pd.read_csv(file_path).drop_duplicates()
     df_games['date'] = pd.to_datetime(df_games['date'])
     df_stats = pd.merge(df_stats, df_games, on='game_id', how='right')
     return df_stats
