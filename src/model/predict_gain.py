@@ -48,12 +48,18 @@ def _get_next_match(data_dir: str, season: int) -> pd.DataFrame:
     df = df.sort_values('date')
     df = df[df.date >= pd.to_datetime('today')]
     df = df.groupby('own_team', as_index=False)[['opponent_team']].first()
+
+    # Get starting-5 status
+    df = df.drop(columns="start")
+    df_lineups = pd.read_csv(os.path.join(data_dir, LINEUPS_FILE))
+    df = pd.merge(df, df_lineups, on="name", how="left")
+    df["start"] = df["start"].fillna(0)
     return df
 
 
 def _get_next_match_per_player(df_stats: pd.DataFrame, data_dir: str, season: int) -> pd.DataFrame:
     """Check next match for each player."""
-    df_player_next_match = df_stats.groupby('name', as_index=False)[['start', 'fanta_value', 'own_team', 'status']].last()
+    df_player_next_match = df_stats.groupby('name', as_index=False)[['fanta_value', 'own_team', 'status']].last()
     df_next_match = _get_next_match(data_dir=data_dir, season=season)
     df_player_next_match = pd.merge(df_player_next_match, df_next_match, on='own_team', how='left')
     return df_player_next_match
@@ -76,7 +82,7 @@ def _predict_gain(df: pd.DataFrame, model):
     predictions = model.get_prediction(df_test)
     df_test['predicted_score'] = predictions.predicted_mean - 1*(predictions.se_mean - predictions.se_mean.mean())
     df_test['predicted_gain'] = [compute_fantabasket_gain(v, s) for (v, s) in zip(df_test.fanta_value, df_test.predicted_score)]
-    df_test.loc[~pd.isna(df_test.status), 'predicted_gain'] = -0.1
+    df_test.loc[(~pd.isna(df_test.status)) & (df_test.status != "gtd"), 'predicted_gain'] = -0.1
     df_test = df_test.sort_values('predicted_gain', ascending=False)
     df_test = df_test[['name', 'predicted_gain', 'predicted_score', 'fanta_value', 'start', 'status']]
     return df_test
