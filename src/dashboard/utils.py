@@ -23,7 +23,7 @@ def add_game_dates_and_teams_to_stats(df_stats: pd.DataFrame, data_dir: str, sea
     # Compute winner and loser
     df_stats['own_team'] = np.where(df_stats.win == 1, df_stats.winner, df_stats.loser)
     df_stats['opponent_team'] = np.where(df_stats.win == 1, df_stats.loser, df_stats.winner)
-    df_stats = df_stats.drop(columns=["winner", "lower", "pts_winner", "pts_loser"])
+    df_stats = df_stats.drop(columns=["winner", "loser", "pts_winner", "pts_loser"])
     return df_stats
 
 
