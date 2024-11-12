@@ -16,14 +16,14 @@ def add_game_dates_and_teams_to_stats(df_stats: pd.DataFrame, data_dir: str, sea
     """Add game dates and teams to df_fanta_stats."""
     # Merge games file to stats file
     file_path = os.path.join(data_dir, str(season), GAMES_FILE)
-    df_games = pd.read_csv(file_path)[['date', 'game_id']].drop_duplicates()
+    df_games = pd.read_csv(file_path).drop_duplicates()
     df_games['date'] = pd.to_datetime(df_games['date'])
     df_stats = pd.merge(df_stats, df_games, on='game_id', how='right')
 
     # Compute winner and loser
     df_stats['own_team'] = np.where(df_stats.win == 1, df_stats.winner, df_stats.loser)
     df_stats['opponent_team'] = np.where(df_stats.win == 1, df_stats.loser, df_stats.winner)
-    df_stats.drop(["pts_winner", "pts_lower"])
+    df_stats = df_stats.drop(columns=["pts_winner", "pts_loser"])
     return df_stats
 
 
@@ -41,7 +41,7 @@ def get_fantabasket_stats(data_dir: str, season: int) -> pd.DataFrame:
     df_fanta_stats = pd.read_csv(os.path.join(data_dir, FANTABASKET_STATS_FILE))
 
     # Add game dates to stats
-    df_fanta_stats = add_game_dates_to_stats(df_stats=df_fanta_stats, data_dir=data_dir, season=season)
+    df_fanta_stats = add_game_dates_and_teams_to_stats(df_stats=df_fanta_stats, data_dir=data_dir, season=season)
 
     # Add time delta for filtering
     df_fanta_stats['time_delta'] = (datetime.today() - df_fanta_stats.date).dt.days
