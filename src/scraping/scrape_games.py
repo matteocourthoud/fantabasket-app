@@ -145,6 +145,7 @@ def _scrape_nba_season(data_dir: str, season: int):
 
 def update_get_nba_stats(data_dir: str, season: int):
     """Scrapes, saves and loads NBA statistics."""
+    print("Scraping games...")
     _scrape_nba_season(data_dir=data_dir, season=season)
     print("Game stats up to date!")
     file_path = os.path.join(data_dir, str(season), STATS_FILE)
