@@ -7,7 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
-from model.compute_stats import compute_fantabasket_gain
+from model.compute_fanta_stats import compute_fantabasket_gain
 
 PREDICTED_GAIN_FILE = 'predicted_gain.csv'
 
@@ -20,17 +20,17 @@ class GainModel:
                  df_calendar: pd.DataFrame,
                  df_games: pd.DataFrame,
                  df_injuries: pd.DataFrame,
-                 df_stats: pd.DataFrame):
+                 df_fanta_stats: pd.DataFrame):
         self._data_dir = data_dir
         self._season = season
         self._df_calendar = df_calendar
         self._df_games = df_games
         self._df_injuries = df_injuries
-        self._df_stats = df_stats
+        self._df_fanta_stats = df_fanta_stats
 
     def _get_season_stats_with_match_info(self) -> pd.DataFrame:
         """Adds games information to df_stats"""
-        df_stats = pd.merge(self._df_stats, self._df_games, on='game_id', how='left')
+        df_stats = pd.merge(self._df_fanta_stats, self._df_games, on='game_id', how='left')
         df_stats['own_team'] = np.where(df_stats.win == 1, df_stats.winner, df_stats.loser)
         df_stats['opponent_team'] = np.where(df_stats.win == 1, df_stats.loser, df_stats.winner)
         return df_stats
