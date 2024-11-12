@@ -8,7 +8,7 @@ from scraping.scrape_injuries import update_get_nba_injuries
 from scraping.scrape_next_lineups import update_get_next_lineups
 from scraping.scrape_games import update_get_nba_stats
 from model.compute_fanta_stats import update_get_fantabasket_stats
-from model.predict_gain import GainModel
+from model.predict_gain import update_get_predicted_gain
 
 DATA_DIR = "../data"
 SEASON = 2024
@@ -33,6 +33,4 @@ if __name__ == '__main__':
     df_fanta_stats = update_get_fantabasket_stats(data_dir=DATA_DIR, season=SEASON, df_stats=df_stats)
 
     # Compute predicted gain
-    gm = GainModel(data_dir=DATA_DIR, season=SEASON, df_calendar=df_calendar, df_injuries=df_injuries,
-                   df_games=df_games, df_fanta_stats=df_fanta_stats)
-    df_predicted_gain = gm.update_get_predicted_gain()
+    df_predicted_gain = update_get_predicted_gain(data_dir=DATA_DIR, season=SEASON)

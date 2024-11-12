@@ -203,4 +203,6 @@ def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     df_table = df_table.sort_values("Gain", ascending=False).reset_index(drop=True)
     df_table["Value"] = df_table["Value"].round(1)
     df_table["Gain"] = df_table["Gain"].round(2)
+    for col in ["Streak", "Start", "Change"]:
+        df_table.loc[df_table[col] == 0, col] = np.nan
     return df_table
