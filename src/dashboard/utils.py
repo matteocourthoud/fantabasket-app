@@ -74,6 +74,8 @@ def get_players_last_stats(data_dir: str, season: int) -> pd.DataFrame:
 def get_df_timeseries_plot(data_dir: str, season: int) -> pd.DataFrame:
     """Gets dataframe for time series plot in the dashboard."""
     df_ts_plot = get_fantabasket_stats(data_dir=data_dir, season=season)
+    df_players = pd.read_csv(os.path.join(data_dir, PLAYERS_FILE))[["name", "position"]]
+    df_ts_plot = pd.merge(df_ts_plot, df_players, on='name', how='left')
     df_ts_plot['name'] = df_ts_plot['name'] + ' - ' + df_ts_plot['last_price'].apply(lambda x: '{0:.1f}'.format(x))
     return df_ts_plot
 
@@ -169,7 +171,6 @@ def add_starters(df: pd.DataFrame, data_dir: str) -> pd.DataFrame:
 def get_df_table(data_dir: str, season: int) -> pd.DataFrame:
     """Gets data to show in table in dashboard."""
     df_fanta_stats = get_fantabasket_stats(data_dir=data_dir, season=season)
-    print(df_fanta_stats.columns)
 
     # Compute streak
     df_fanta_stats = compute_streak(df_fanta_stats)
