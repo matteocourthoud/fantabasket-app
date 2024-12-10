@@ -22,10 +22,12 @@ def _combine_dfs_injuries(dfs):
 def _clean_df_injuries(df_injuries: pd.DataFrame) -> pd.DataFrame:
     """Cleans dataframe with injuries information."""
     df_injuries = df_injuries.reset_index(drop=True)
-    for i in range(len(df_injuries)):
-        first_name = df_injuries['name'][i].split(" ")[-1]
-        name_index = df_injuries['name'][i].find(first_name) + len(first_name)
-        df_injuries['name'][i] = df_injuries['name'][i][name_index:]
+    names = df_injuries['name'].values
+    for i in range(len(names)):
+        first_name = names[i].split(" ")[-1]
+        name_index = names[i].find(first_name) + len(first_name)
+        names[i] = names[i][name_index:]
+    df_injuries['name'] = names
     df_injuries['status'] = df_injuries['status'].str.replace('Expected to be out until at least ', '')
     df_injuries['status'] = df_injuries['status'].str.replace('Game Time Decision', 'gtd')
     return df_injuries
