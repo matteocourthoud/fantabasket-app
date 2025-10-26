@@ -8,8 +8,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from src.database.supabase_utils import save_dataframe_to_supabase, load_dataframe_from_supabase
-from src.database.table_names import LINEUPS_TABLE, TEAMS_TABLE
+from supabase.utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.supabase.table_names import LINEUPS_TABLE, TEAMS_TABLE
 from src.scraping.utils import get_chrome_driver
 
 WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'

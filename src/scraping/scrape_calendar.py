@@ -1,8 +1,8 @@
 """Scrape NBA games stats."""
 
 import pandas as pd
-from src.database.supabase_utils import save_dataframe_to_supabase, load_dataframe_from_supabase
-from src.database.table_names import CALENDAR_TABLE, TEAMS_TABLE
+from supabase.utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.supabase.table_names import CALENDAR_TABLE, TEAMS_TABLE
 from src.scraping.utils import get_current_season
 
 WEBSITE_URL = 'https://www.basketball-reference.com'

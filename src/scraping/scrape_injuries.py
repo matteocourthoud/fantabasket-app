@@ -2,8 +2,8 @@
 
 from datetime import datetime
 import pandas as pd
-from src.database.supabase_utils import save_dataframe_to_supabase
-from src.database.table_names import INJURIES_TABLE
+from supabase.utils import save_dataframe_to_supabase
+from src.supabase.table_names import INJURIES_TABLE
 
 WEBSITE_URL = 'https://www.cbssports.com/nba/injuries/'
 

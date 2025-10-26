@@ -7,8 +7,8 @@ import requests
 from unidecode import unidecode
 import pandas as pd
 from bs4 import BeautifulSoup
-from src.database.supabase_utils import save_dataframe_to_supabase, load_dataframe_from_supabase
-from src.database.table_names import PLAYERS_TABLE, STATS_TABLE
+from supabase.utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.supabase.table_names import PLAYERS_TABLE, STATS_TABLE
 
 WEBSITE_URL = 'https://www.basketball-reference.com'
 

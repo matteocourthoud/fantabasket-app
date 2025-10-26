@@ -2,8 +2,8 @@
 
 import pandas as pd
 from selenium.webdriver.common.by import By
-from src.database.supabase_utils import save_dataframe_to_supabase
-from src.database.table_names import INITIAL_RATINGS_TABLE
+from supabase.utils import save_dataframe_to_supabase
+from src.supabase.table_names import INITIAL_RATINGS_TABLE
 from src.scraping.utils import get_current_season, get_chrome_driver
 
 WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'

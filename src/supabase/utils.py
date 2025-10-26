@@ -2,7 +2,7 @@
 
 import pandas as pd
 from typing import List
-from .supabase_client import get_supabase_client
+from .client import get_supabase_client
 
 
 def save_dataframe_to_supabase(

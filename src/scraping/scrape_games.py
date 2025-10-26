@@ -9,8 +9,8 @@ import numpy as np
 
 from io import StringIO
 from bs4 import BeautifulSoup
-from src.database.supabase_utils import save_dataframe_to_supabase, load_dataframe_from_supabase
-from src.database.table_names import CALENDAR_TABLE, GAMES_TABLE, STATS_TABLE
+from supabase.utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.supabase.table_names import CALENDAR_TABLE, GAMES_TABLE, STATS_TABLE
 from src.scraping.utils import get_current_season
 
 WEBSITE_URL = 'https://www.basketball-reference.com'
