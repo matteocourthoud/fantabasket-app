@@ -34,9 +34,9 @@ def _scrape_ratings(url: str) -> pd.DataFrame:
     driver.implicitly_wait(1)
     
     # Verify we're on the correct URL
-    if driver.current_url == url:
-        print(f"Warning: Redirected to unexpected URL: {driver.current_url}")
-
+    assert driver.current_url == url, \
+        f"""Could not load the page correctly. Expected URL:\n{url}\nGot URL:\n{driver.current_url}"""
+    
     # Try to dismiss cookie consent banner if present
     try:
         # Look for common cookie consent button selectors
@@ -78,13 +78,14 @@ def _scrape_initial_ratings(season: int) -> pd.DataFrame:
     
     # Build URL for the first few weeks of the season
     url = f"https://www.dunkest.com/en/nba/stats/players/table?season_id={season_id}&mode=dunkest&stats_type=tot"
-    url += "".join([f"&weeks[]={i}" for i in range(1, 6)])
+    url += "".join([f"&weeks[]={i}" for i in range(1, 3)])
     url += "".join([f"&teams[]={i}" for i in range(1, 31)])
     url += "&positions[]=1&positions[]=2&positions[]=3&player_search=&min_cr=4&max_cr=35&sort_by=pdk&sort_order=desc"
     
-    print(f"Scraping initial ratings from: {url}")
-
+    # Scrape ratings
     df_ratings = _scrape_ratings(url)
+
+    # Clean and format ratings DataFrame
     df_ratings["initial_rating"] = pd.to_numeric(df_ratings["dunkest_value"]) - pd.to_numeric(
         df_ratings["plus"].str.replace("+", "").str.replace("−", "-"))
     df_ratings = df_ratings[["name_short", "team_code", "initial_rating"]]
@@ -93,20 +94,19 @@ def _scrape_initial_ratings(season: int) -> pd.DataFrame:
     return df_ratings
 
 
-def _remove_duplicates(df: pd.DataFrame, subset_column: str) -> pd.DataFrame:
+def _remove_duplicates(df: pd.DataFrame, subset_columns: list[str]) -> pd.DataFrame:
     """Removes duplicate players and prints information about them."""
     initial_count = len(df)
     
     # Find and print duplicates before removing them
-    duplicates_mask = df.duplicated(subset=[subset_column], keep=False)
+    duplicates_mask = df.duplicated(subset=subset_columns, keep=False)
     if duplicates_mask.any():
-        duplicate_players = df[duplicates_mask].sort_values(subset_column)
-        print(f"\nFound {duplicates_mask.sum()} duplicate entries for {len(duplicate_players[subset_column].unique())} players:")
-        for player in duplicate_players[subset_column].unique():
-            player_data = duplicate_players[duplicate_players[subset_column] == player]
-            print(f"  {player}: {list(player_data['initial_rating'].values)}")
+        duplicate_players = df[duplicates_mask].sort_values(by=subset_columns)
+        print(f"\nFound {duplicates_mask.sum()} duplicate entries for {len(duplicate_players.groupby(subset_columns))} players:")
+        for group_keys, group_df in duplicate_players.groupby(subset_columns):
+            print(f"  {group_keys}: {list(group_df['initial_rating'].values)}")
     
-    df = df.drop_duplicates(subset=[subset_column], keep="first")
+    df = df.drop_duplicates(subset=subset_columns, keep="first")
     
     if len(df) < initial_count:
         print(f"\nNote: Removed {initial_count - len(df)} duplicate entries")
@@ -124,7 +124,7 @@ def scrape_initial_ratings(season: int = None) -> None:
     df_initial_ratings = df_initial_ratings.round({"initial_rating": 1})
     
     # Remove duplicates (keep first occurrence)
-    df_initial_ratings = _remove_duplicates(df_initial_ratings, "player_short")
+    df_initial_ratings = _remove_duplicates(df_initial_ratings, ["player_short", "team_code"])
     
     # Save to Supabase
     save_dataframe_to_supabase(
