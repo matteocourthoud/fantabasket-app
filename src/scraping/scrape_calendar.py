@@ -1,5 +1,6 @@
 """Scrape NBA games stats."""
 
+import time
 import pandas as pd
 from src.supabase.utils import save_dataframe_to_supabase
 from src.supabase.table_names import CALENDAR_TABLE
@@ -19,11 +20,12 @@ def scrape_calendar(season: int = None) -> None:
     df_calendar = pd.DataFrame()
     for month in MONTHS:
         print(f"  Scraping {month.capitalize()}...")
+        time.sleep(4) # Basketball Reference rate is 20 requests per minute
         df = pd.read_html(WEBSITE_URL + f'/leagues/NBA_{season+1}_games-{month}.html')[0]
         df = df[['Date', 'Visitor/Neutral', 'Home/Neutral']]
         df.columns = ['date', 'team_visitor', 'team_home']
         df['date'] = pd.to_datetime((df['date']))
-        df_calendar = pd.concat([df_calendar, df]).reset_index(drop=True)
+        df_calendar = pd.concat([df_calendar, df]).reset_index(drop=True)    
     
     # Add season column
     df_calendar['season'] = season

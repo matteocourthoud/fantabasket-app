@@ -9,7 +9,7 @@ import numpy as np
 
 from io import StringIO
 from bs4 import BeautifulSoup
-from supabase.utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.supabase.utils import save_dataframe_to_supabase, load_dataframe_from_supabase
 from src.supabase.table_names import CALENDAR_TABLE, GAMES_TABLE, STATS_TABLE
 from src.scraping.utils import get_current_season
 
@@ -36,15 +36,6 @@ def _get_game_id(game_element) -> str:
     game_url = game_element.find("td", class_='right gamelink').find('a', href=True)['href']
     game_id = re.findall('/boxscores/(\w+).html', game_url)[0]
     return game_id
-
-
-def _get_unscraped_games(game_elements, df_games: pd.DataFrame) -> list:
-    """Generates a list of unscraped game HTML elements."""
-    if df_games.empty:
-        return game_elements
-    scraped_games_id = df_games.game_id.values
-    unscraped_games = [game_element for game_element in game_elements if _get_game_id(game_element) not in scraped_games_id]
-    return unscraped_games
 
 
 def _scrape_game(game_element, date: str, season: int) -> pd.DataFrame:
@@ -79,6 +70,7 @@ def _get_df_stats(dfs: list[pd.DataFrame], scores: list[int]) -> pd.DataFrame:
 
 def _fetch_game_page_data(game_element) -> tuple[list[pd.DataFrame], list[int]]:
     """Fetches and parses the game page HTML to extract tables and scores."""
+    time.sleep(4) # Basketball Reference rate is 20 requests per minute
     game_url = game_element.find("td", class_='right gamelink').find('a', href=True)['href']
     soup = BeautifulSoup(requests.get(WEBSITE_URL + game_url).content, "lxml")
     scores = [int(s.text) for s in soup.find('div', class_='scorebox').find_all('div', class_='score')]
@@ -89,6 +81,7 @@ def _fetch_game_page_data(game_element) -> tuple[list[pd.DataFrame], list[int]]:
 
 def _scrape_games_from_date(date: str) -> list:
     """Scrape all the game HTML elements from a date."""
+    time.sleep(4) # Basketball Reference rate is 20 requests per minute
     year, month, day = date.split("-")
     results_url = f'{WEBSITE_URL}/boxscores/?month={month}&day={day}&year={year}'
     soup = BeautifulSoup(requests.get(results_url).content, "lxml")
