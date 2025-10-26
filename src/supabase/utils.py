@@ -74,10 +74,25 @@ def save_dataframe_to_supabase(
 
 
 
-def load_dataframe_from_supabase(table_name: str) -> pd.DataFrame:
-    """Load all data from a Supabase table into a pandas DataFrame."""
+def load_dataframe_from_supabase(
+        table_name: str,
+        filters: dict = None,
+    ) -> pd.DataFrame:
+    """
+    Load data from a Supabase table into a pandas DataFrame.
+    
+    Args:
+        table_name: Name of the Supabase table
+        filters: A dictionary of filters to apply (e.g., {'season': 2025})
+    """
     client = get_supabase_client()
-    response = client.table(table_name).select('*').execute()    
+    query = client.table(table_name).select('*')
+
+    if filters:
+        for column, value in filters.items():
+            query = query.eq(column, value)
+            
+    response = query.execute()
     df = pd.DataFrame(response.data)
     print(f"✓ Loaded {len(df)} records from '{table_name}' table in Supabase")
     return df
