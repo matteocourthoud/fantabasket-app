@@ -6,8 +6,6 @@ from supabase.utils import save_dataframe_to_supabase
 from src.supabase.table_names import INITIAL_RATINGS_TABLE
 from src.scraping.utils import get_current_season, get_chrome_driver
 
-WEBSITE_URL = 'https://basketballmonster.com/nbalineups.aspx'
-
 
 def _extract_dunkest_table(driver) -> pd.DataFrame:
     """Extracts the dunkest table from the current page of the webdriver."""
