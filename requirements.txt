@@ -11,3 +11,4 @@ dash~=2.13.0
 supabase~=2.0.0
 python-dotenv~=1.0.0
 selenium~=4.15.0
+streamlit~=1.30.0
