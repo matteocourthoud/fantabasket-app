@@ -1,13 +1,14 @@
 """Compute Fantabasket statistics from NBA statistics."""
 
 import os.path
+
 import numpy as np
 import pandas as pd
 
-STATS_FILE = 'stats.csv'
-PLAYERS_FILE = 'players.csv'
-INITIAL_VALUES_FILE = 'initial_ratings.csv'
-FANTABASKET_STATS_FILE = 'fantabasket_stats.csv'
+STATS_FILE = "stats.csv"
+PLAYERS_FILE = "players.csv"
+INITIAL_VALUES_FILE = "initial_ratings.csv"
+FANTABASKET_STATS_FILE = "fantabasket_stats.csv"
 
 
 def compute_fantabasket_gain(old_value: float, score: float) -> float:
@@ -20,33 +21,33 @@ def compute_fantabasket_gain(old_value: float, score: float) -> float:
 def _compute_fantabasket_score(df: pd.DataFrame) -> pd.Series:
     """Source: https://docs.dunkest.com/v/rules-en/fantasy/player-scoring."""
     fanta_score = (
-            (1 * df['pts']
-             + 1 * df['drb']
-             + 1.25 * df['orb']
-             + 1.5 * df['ast']
-             + 1.5 * df['stl']
-             - 1.5 * df['tov']
-             + 1.5 * df['blk']
-             + 5 * ((df['pts'] >= 10) & (df['ast'] >= 10))
-             + 5 * ((df['pts'] >= 10) & (df['trb'] >= 10))
-             + 1 * df['start']
-             + 3 * (df['3p'] >= 3)
-             + 1 * (df['3p'] >= 4)
-             + 1 * (df['3p'] >= 5)
-             - 1 * (df['fga'] - df['fg'])
-             - 1 * (df['fta'] - df['ft'])
-             - 5 * (df['pf'] > 5)  # TODO: check if the fouled-out malus is still there
+            (1 * df["pts"]
+             + 1 * df["drb"]
+             + 1.25 * df["orb"]
+             + 1.5 * df["ast"]
+             + 1.5 * df["stl"]
+             - 1.5 * df["tov"]
+             + 1.5 * df["blk"]
+             + 5 * ((df["pts"] >= 10) & (df["ast"] >= 10))
+             + 5 * ((df["pts"] >= 10) & (df["trb"] >= 10))
+             + 1 * df["start"]
+             + 3 * (df["3p"] >= 3)
+             + 1 * (df["3p"] >= 4)
+             + 1 * (df["3p"] >= 5)
+             - 1 * (df["fga"] - df["fg"])
+             - 1 * (df["fta"] - df["ft"])
+             - 5 * (df["pf"] > 5)  # TODO: check if the fouled-out malus is still there
              )
-            * (1 + 0.05 * df['win']))
+            * (1 + 0.05 * df["win"]))
     return fanta_score
 
 
 def _init_fantabasket_values(past_season_stats_file: str) -> pd.DataFrame:
     """Initializes the fantabasket values at the beginning of the season."""
     df_past_season = pd.read_csv(past_season_stats_file)
-    df_past_season['fanta_score'] = _compute_fantabasket_score(df_past_season)
-    df_values = df_past_season.groupby('name', as_index=False).agg(fanta_value=('fanta_score', 'mean'))
-    df_values['fanta_value'] = np.maximum(df_values['fanta_value'] / 2, 4).fillna(4)
+    df_past_season["fanta_score"] = _compute_fantabasket_score(df_past_season)
+    df_values = df_past_season.groupby("name", as_index=False).agg(fanta_value=("fanta_score", "mean"))
+    df_values["fanta_value"] = np.maximum(df_values["fanta_value"] / 2, 4).fillna(4)
     return df_values
 
 
@@ -88,15 +89,15 @@ def _compute_fantabasket_stats(data_dir: str, season: int, df_stats: pd.DataFram
     # Get players values
     df_values = _load_initial_fantabasket_values(data_dir=data_dir, season=season)
     df_fanta_stats = df_stats.copy()
-    df_fanta_stats['fanta_score'] = _compute_fantabasket_score(df_fanta_stats)
-    df_fanta_stats = pd.merge(df_fanta_stats, df_values, on='name', how='left').sort_values('game_id')
+    df_fanta_stats["fanta_score"] = _compute_fantabasket_score(df_fanta_stats)
+    df_fanta_stats = pd.merge(df_fanta_stats, df_values, on="name", how="left").sort_values("game_id")
 
     # Compute value and gains
-    df_fanta_stats['fanta_gain'] = 0.0
-    cols = ['name', 'game_id', 'fanta_score', 'fanta_value', 'fanta_gain']
-    for player in df_fanta_stats['name'].unique():
-        df_fanta_stats.loc[df_fanta_stats['name'] == player, cols] = _compute_player_value(
-            df_fanta_stats.loc[df_fanta_stats['name'] == player, cols])
+    df_fanta_stats["fanta_gain"] = 0.0
+    cols = ["name", "game_id", "fanta_score", "fanta_value", "fanta_gain"]
+    for player in df_fanta_stats["name"].unique():
+        df_fanta_stats.loc[df_fanta_stats["name"] == player, cols] = _compute_player_value(
+            df_fanta_stats.loc[df_fanta_stats["name"] == player, cols])
     return df_fanta_stats
 
 

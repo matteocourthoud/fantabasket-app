@@ -1,19 +1,20 @@
 """Main file to prepare data for the fantabasket dashboard."""
 
 import os
-import pandas as pd
 
-from scraping.scrape_calendar import update_get_nba_calendar
-from scraping.scrape_injuries import update_get_nba_injuries
-from scraping.scrape_next_lineups import update_get_next_lineups
-from scraping.scrape_games import update_get_nba_stats
+import pandas as pd
 from model.compute_fanta_stats import update_get_fantabasket_stats
 from model.predict_gain import update_get_predicted_gain
+from scraping.scrape_next_lineups import update_get_next_lineups
+
+from scraping.scrape_calendar import update_get_nba_calendar
+from scraping.scrape_games import update_get_nba_stats
+from scraping.scrape_injuries import update_get_nba_injuries
 
 DATA_DIR = "../data"
 SEASON = 2024
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Load game data
     df_games = pd.read_csv(os.path.join(DATA_DIR, str(SEASON), "games.csv"))
 
