@@ -1,70 +1,51 @@
-"""
-Scrape NBA games stats.
-Author: Matteo Courthoud
-Date: 22/10/2022
-"""
-import os.path
-import pandas as pd
+"""Scrape NBA games stats."""
 
-CALENDAR_FILE = 'calendar.csv'
+import pandas as pd
+from src.database.supabase_utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.database.table_names import CALENDAR_TABLE, TEAMS_TABLE
+from src.scraping.utils import get_current_season
+
 WEBSITE_URL = 'https://www.basketball-reference.com'
 MONTHS = ['october', 'november', 'december', 'january', 'february', 'march', 'april']
-TEAM_NAMES_MAP = {
-    'Brooklyn Nets': 'Brooklyn',
-    'Golden State Warriors': 'Golden State',
-    'Indiana Pacers': 'Indiana',
-    'Chicago Bulls': 'Chicago',
-    'Boston Celtics': 'Boston',
-    'Washington Wizards': 'Washington',
-    'Cleveland Cavaliers': 'Cleveland',
-    'Houston Rockets': 'Houston',
-    'Philadelphia 76ers': 'Philadelphia',
-    'Orlando Magic': 'Orlando',
-    'Oklahoma City Thunder': 'Oklahoma City',
-    'Sacramento Kings': 'Sacramento',
-    'Denver Nuggets': 'Denver',
-    'Dallas Mavericks': 'Dallas',
-    'Milwaukee Bucks': 'Milwaukee',
-    'Los Angeles Clippers': 'LA Clippers',
-    'New York Knicks': 'New York',
-    'Charlotte Hornets': 'Charlotte',
-    'Toronto Raptors': 'Toronto',
-    'New Orleans Pelicans': 'New Orleans',
-    'San Antonio Spurs': 'San Antonio',
-    'Phoenix Suns': 'Phoenix',
-    'Utah Jazz': 'Utah',
-    'Atlanta Hawks': 'Atlanta',
-    'Miami Heat': 'Miami',
-    'Detroit Pistons': 'Detroit',
-    'Memphis Grizzlies': 'Memphis',
-    'Portland Trail Blazers': 'Portland',
-    'Los Angeles Lakers': 'LA Lakers',
-    'Minnesota Timberwolves': 'Minnesota',
-}
 
 
-def scrape_nba_calendar(season: int) -> pd.DataFrame:
-    """Scrapes calendar of all NBA games for a season."""
+def scrape_calendar(season: int = None) -> None:
+    """Scrapes NBA calendar for a season and saves to Supabase."""
+    if season is None:
+        season = get_current_season()
+    
+    print(f"Scraping calendar for season {season}...")
+    
+    # Load teams mapping from Supabase
+    df_teams = load_dataframe_from_supabase(TEAMS_TABLE)
+    team_names_map = dict(zip(df_teams['team_long'], df_teams['team']))
+    
     df_calendar = pd.DataFrame()
     for month in MONTHS:
+        print(f"  Scraping {month.capitalize()}...")
         df = pd.read_html(WEBSITE_URL + f'/leagues/NBA_{season+1}_games-{month}.html')[0]
         df = df[['Date', 'Visitor/Neutral', 'Home/Neutral']]
         df.columns = ['date', 'team_visitor', 'team_home']
         df['date'] = pd.to_datetime((df['date']))
         df_calendar = pd.concat([df_calendar, df]).reset_index(drop=True)
-    # Clean team names
+    
+    # Clean team names using teams table
     for team in ['team_visitor', 'team_home']:
-        df_calendar[team] = df_calendar[team].replace(TEAM_NAMES_MAP)
-    return df_calendar
-
-
-def update_get_nba_calendar(data_dir: str, season: int, update: bool = False) -> pd.DataFrame:
-    """Loads NBA calendar."""
-    file_path = os.path.join(data_dir, str(season), CALENDAR_FILE)
-    if update or not os.path.exists(file_path):
-        df_calendar = scrape_nba_calendar(season=season)
-        df_calendar = df_calendar.sort_values(by="date", ignore_index=True)
-        df_calendar.to_csv(file_path, index=False)
-    df_calendar = pd.read_csv(file_path)
-    assert not df_calendar.duplicated().any(), f"Duplicated rows in {file_path}"
-    return df_calendar
+        df_calendar[team] = df_calendar[team].replace(team_names_map)
+    
+    # Add season column
+    df_calendar['season'] = season
+    
+    # Sort by date
+    df_calendar = df_calendar.sort_values(by="date", ignore_index=True)
+    
+    # Convert date to string for JSON serialization
+    df_calendar['date'] = df_calendar['date'].dt.strftime('%Y-%m-%d')
+    
+    # Save to Supabase
+    save_dataframe_to_supabase(
+        df=df_calendar,
+        table_name=CALENDAR_TABLE,
+        index_columns=['season', 'date', 'team_home'],
+        upsert=True
+    )

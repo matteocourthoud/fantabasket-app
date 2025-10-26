@@ -1,13 +1,14 @@
 """Scrapes NBA players' injuries from www.cbssports.com/nba/injuries/."""
 
-import os
+from datetime import datetime
 import pandas as pd
+from src.database.supabase_utils import save_dataframe_to_supabase
+from src.database.table_names import INJURIES_TABLE
 
-INJURIES_FILE = 'injuries.csv'
 WEBSITE_URL = 'https://www.cbssports.com/nba/injuries/'
 
 
-def _combine_dfs_injuries(dfs):
+def _combine_dfs_injuries(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     """Combines single dataframes from www.cbssports.com into one."""
     df_injuries = pd.DataFrame()
     for df in dfs:
@@ -33,21 +34,22 @@ def _clean_df_injuries(df_injuries: pd.DataFrame) -> pd.DataFrame:
     return df_injuries
 
 
-def _scrape_injuries() -> pd.DataFrame:
-    """Scrapes data on NBA injured players"""
+def scrape_injuries(table_name: str = INJURIES_TABLE) -> None:
+    """Scrapes NBA injured players and saves to Supabase."""
+    print("Scraping injuries...")
+    
+    # Scrape and clean dataframe with injuries
     dfs = pd.read_html(WEBSITE_URL)
     df_injuries = _combine_dfs_injuries(dfs)
     df_injuries = _clean_df_injuries(df_injuries)
-    return df_injuries.sort_values(by="name", ignore_index=True)
-
-
-def update_get_nba_injuries(data_dir: str, update: bool = True) -> pd.DataFrame:
-    """Updates and returns dataframe with injured NBA players."""
-    file_path = os.path.join(data_dir, INJURIES_FILE)
-    if update or not os.path.exists(file_path):
-        print("Scraping injuries...")
-        df_injuries = _scrape_injuries()
-        df_injuries.to_csv(file_path, index=False)
-    df_injuries = pd.read_csv(file_path)
-    assert not df_injuries.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
-    return df_injuries
+    df_injuries = df_injuries.sort_values(by="name", ignore_index=True)
+    df_injuries['scraped_at'] = datetime.now().isoformat()
+    
+    # Save to Supabase (upsert will update all existing records with fresh data)
+    save_dataframe_to_supabase(
+        df=df_injuries,
+        table_name=table_name,
+        index_columns=["name"],
+        upsert=True,
+        replace=True,
+    )

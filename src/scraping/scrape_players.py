@@ -1,6 +1,5 @@
 """Scrapes list of NBA players, with short names, positions and codes."""
 
-import os
 import re
 import time
 from typing import Tuple
@@ -8,28 +7,29 @@ import requests
 from unidecode import unidecode
 import pandas as pd
 from bs4 import BeautifulSoup
+from src.database.supabase_utils import save_dataframe_to_supabase, load_dataframe_from_supabase
+from src.database.table_names import PLAYERS_TABLE, STATS_TABLE
 
-PLAYERS_FILE = 'players.csv'
-STATS_FILE = 'stats.csv'
 WEBSITE_URL = 'https://www.basketball-reference.com'
 
 
-def _get_df_all_players(data_dir: str, season: int):
-    seasons = range(season, 2021, -1)
-    dfs_stats = [pd.read_csv(os.path.join(data_dir, str(s), STATS_FILE))[["name", "game_id"]] for s in seasons]
-    df_players = pd.concat(dfs_stats).drop_duplicates("name").reset_index(drop=True)
+def _get_df_all_players() -> pd.DataFrame:
+    """Get all unique players from stats table across all seasons."""
+    df_stats = load_dataframe_from_supabase(STATS_TABLE)
+    df_players = df_stats[["player", "game_id"]].drop_duplicates("player").reset_index(drop=True)
     return df_players
 
 
 def _scrape_player_code_and_position(player_name: str, game_id: str) -> Tuple[str, str]:
+    """Scrapes player code and position from basketball-reference.com."""
     time.sleep(4)
     game_url = f'{WEBSITE_URL}/boxscores/{game_id}.html'
     soup = BeautifulSoup(requests.get(game_url).content, "lxml")
     try:
         player_url = soup.find(lambda tag: tag.name == 'a' and tag.text == player_name)['href']
         player_code = re.findall(r"/([^/]+)\.html$", player_url)[0]
-    except:
-        print(player_name, game_url)
+    except Exception as e:
+        print(f"Error for {player_name} at {game_url}: {e}")
         return "", ""
     soup = BeautifulSoup(requests.get(WEBSITE_URL + player_url).content, "lxml")
     player_info = str(soup.find('div', id='meta'))
@@ -39,63 +39,71 @@ def _scrape_player_code_and_position(player_name: str, game_id: str) -> Tuple[st
     return player_code, ""
 
 
-def _scrape_all_player_positions(df_players: pd.DataFrame, df_all_players: pd.DataFrame, file_path: str) -> pd.DataFrame:
+def _scrape_all_player_positions(df_players: pd.DataFrame, df_all_players: pd.DataFrame) -> pd.DataFrame:
+    """Scrapes positions for all players not yet in the players table."""
     for i in range(len(df_all_players)):
-        player_name = df_all_players.name[i]
+        player_name = df_all_players.player[i]
         print(f'Progress: {i}/{len(df_all_players)}', end='\r')
-        if player_name in df_players.name.values:
+        if player_name in df_players.player.values:
             continue
         game_id = df_all_players.game_id[i]
         player_code, player_position = _scrape_player_code_and_position(player_name=player_name, game_id=game_id)
-        if player_position is not None:
-            df_player = pd.DataFrame({"name": [player_name], "code": [player_code], "position": [player_position]})
-            df_players = pd.concat([df_players, df_player])
-            df_players.to_csv(file_path, index=False)
+        if player_position:
+            df_player = pd.DataFrame({"player": [player_name], "player_code": [player_code], "position": [player_position]})
+            df_players = pd.concat([df_players, df_player], ignore_index=True)
     return df_players
 
 
-def _add_name_sort(df: pd.DataFrame) -> pd.DataFrame:
-    f_clean_names = lambda x: f"{x.split()[0][0]}. {unidecode(x.split()[-1])}"
-    df["name_short"] = df['name'].apply(f_clean_names)
+def _clean_player_name(name: str) -> str:
+    """Cleans a player name to create a short version."""
+    return f"{name.split()[0][0]}. {unidecode(name.split()[-1])}"
+
+
+def _clean_player_name_with_suffix(name: str) -> str:
+    """Cleans a player name with suffix (Jr., Sr., etc.) to create a short version."""
+    return f"{name.split()[0][0]}. {unidecode(name.split()[-2])} {name.split()[-1]}"
+
+
+def _add_name_short(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds a short name column to the players dataframe."""
+    df["name_short"] = df['player'].apply(_clean_player_name)
 
     # Clean suffixes
     for suffix in ["Jr.", "Sr.", "II", "III", "IV"]:
         rows = df["name_short"].str.endswith(suffix)
-        f_clean_names_with_suffix = lambda x: f"{x.split()[0][0]}. {unidecode(x.split()[-2])} {x.split()[-1]}"
-        df.loc[rows, "name_short"] = df.loc[rows, 'name'].apply(f_clean_names_with_suffix)
+        df.loc[rows, "name_short"] = df.loc[rows, 'player'].apply(_clean_player_name_with_suffix)
 
     # Custom cleaning
-    df.loc[df.name == "Xavier Tillman Sr.", "name_short"] = "X. Tillman"
-    df.loc[df.name == "Ron Holland", "name_short"] = "R. Holland II"
-    df.loc[df.name == "Tristan Da Silva", "name_short"] = "T. da Silva"
-    df.loc[df.name == "Yongxi Cui", "name_short"] = "C. Yongxi"
+    df.loc[df.player == "Xavier Tillman Sr.", "name_short"] = "X. Tillman"
+    df.loc[df.player == "Ron Holland", "name_short"] = "R. Holland II"
+    df.loc[df.player == "Tristan Da Silva", "name_short"] = "T. da Silva"
+    df.loc[df.player == "Yongxi Cui", "name_short"] = "C. Yongxi"
     return df
 
 
-def get_players(data_dir: str, season: int) -> pd.DataFrame():
-    df_all_players = _get_df_all_players(data_dir=data_dir, season=season)
-    file_path = os.path.join(data_dir, PLAYERS_FILE)
-    if not os.path.exists(file_path):
-        df_players = pd.read_csv(file_path)
-    else:
-        df_players = pd.DataFrame(columns=["name", "name_short", "code", "position"])
+def scrape_players() -> None:
+    """Scrapes NBA players with codes and positions, saves to Supabase."""
+    print("Scraping players from all seasons...")
+    
+    # Get all players from stats table
+    df_all_players = _get_df_all_players()
+    
+    # Load existing players from Supabase
+    df_players = load_dataframe_from_supabase(PLAYERS_TABLE)
+    if df_players.empty:
+        df_players = pd.DataFrame(columns=["player", "name_short", "player_code", "position"])
 
-    # Scrape players
-    df_players = _scrape_all_player_positions(df_players=df_players, df_all_players=df_all_players,
-                                              file_path=file_path)
-    print("Players database is up to date!")
+    # Scrape missing players
+    df_players = _scrape_all_player_positions(df_players=df_players, df_all_players=df_all_players)
+    print("\n✓ Players database is up to date!")
 
-    # Update name short
-    df_players = _add_name_sort(df=df_players)
-    return df_players
-
-
-def update_get_players(data_dir: str, season: int, update: bool = False) -> pd.DataFrame():
-    # Import / initialize dataframes
-    file_path = os.path.join(data_dir, PLAYERS_FILE)
-    if update or not os.path.exists(file_path):
-        df_players = get_players(data_dir=data_dir, season=season)
-        df_players.to_csv(file_path, index=False)
-    df_players = pd.read_csv(file_path)
-    assert not df_players.duplicated(subset=["name"]).any(), f"Duplicated 'name' in {file_path}."
-    return df_players
+    # Update name_short column
+    df_players = _add_name_short(df=df_players)
+    
+    # Save updated dataframe to Supabase
+    save_dataframe_to_supabase(
+        df=df_players,
+        table_name=PLAYERS_TABLE,
+        index_columns=['player'],
+        replace=True,
+    )
