@@ -60,8 +60,7 @@ def main():
         return
 
     # Remove 'scraped_at' column if present
-    if "scraped_at" in df_injuries.columns:
-        df_injuries = df_injuries.drop(columns=["scraped_at"])
+    df_injuries = df_injuries.drop(columns=["scraped_at", "status"])
 
     st.dataframe(df_injuries, width="stretch", hide_index=True)
 
