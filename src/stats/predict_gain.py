@@ -7,6 +7,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from model.compute_fanta_stats import compute_fantabasket_gain
 
+
 PLAYERS_FILE = "players.csv"
 GAMES_FILE = "games.csv"
 FANTABASKET_STATS_FILE = "fantabasket_stats.csv"

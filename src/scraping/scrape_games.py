@@ -11,8 +11,9 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.scraping.utils import get_current_season
-from src.supabase.table_names import CALENDAR_TABLE, GAMES_TABLE, STATS_TABLE
+from src.supabase.tables import TABLE_CALENDAR, TABLE_GAMES, TABLE_STATS
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+
 
 WEBSITE_URL = "https://www.basketball-reference.com"
 
@@ -53,31 +54,48 @@ def _scrape_game(game_element, date: str, season: int) -> pd.DataFrame:
     return df_game
 
 
-def _get_df_stats(dfs: list[pd.DataFrame], scores: list[int]) -> pd.DataFrame:
+def _scrape_player_ids(table) -> list[str]:
+    """Extracts player IDs from table rows."""
+    player_ids = []
+    for row in table.find("tbody").find_all("tr"):
+        th = row.find("th", {"data-stat": "player"})
+        if th and th.find("a", href=True):
+            player_url = th.find("a", href=True)["href"]
+            player_id = re.findall(r"/players/\w/(\w+)\.html", player_url)
+            player_ids.append(player_id[0] if player_id else None)
+    return player_ids
+
+
+def _get_df_stats(tables: list, scores: list[int]) -> pd.DataFrame:
     """Combines the two team tables into a single one with players' stats."""
     df_stats = pd.DataFrame()
-    for df, score in zip(dfs, scores):
+    for table, score in zip(tables, scores):
+        # Parse table data
+        df = pd.read_html(StringIO(str(table)))[0]
         df.columns = [col[1].lower() for col in df.columns]
         df["start"] = (df.index < 5).astype(int)
         df["win"] = int(score > min(scores))
         df = df.rename(columns={"starters": "player"})
+        
+        # Filter out rows without valid player data
         df = df.loc[~df["player"].isin(["Reserves", "Team Totals"]), :]
         df["mp"] = df["mp"].str.extract(r"^(\d+)")
+        df["player_id"] = _scrape_player_ids(table)
         for col in df.columns[1:]:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+            if col not in ["player", "player_id"]:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
         df_stats = pd.concat([df_stats, df]).reset_index(drop=True)
     return df_stats
 
 
-def _fetch_game_page_data(game_element) -> tuple[list[pd.DataFrame], list[int]]:
+def _fetch_game_page_data(game_element) -> tuple[list, list[int]]:
     """Fetches and parses the game page HTML to extract tables and scores."""
     time.sleep(4) # Basketball Reference rate is 20 requests per minute
     game_url = game_element.find("td", class_="right gamelink").find("a", href=True)["href"]
     soup = BeautifulSoup(requests.get(WEBSITE_URL + game_url).content, "lxml")
     scores = [int(s.text) for s in soup.find("div", class_="scorebox").find_all("div", class_="score")]
     tables = soup.find_all(lambda tag: tag.name == "table" and tag.has_attr("id") and "game-basic" in tag["id"])
-    dfs = [pd.read_html(StringIO(str(table)))[0] for table in tables]
-    return dfs, scores
+    return tables, scores
 
 
 def _scrape_games_from_date(date: str) -> list:
@@ -94,18 +112,24 @@ def _clean_stats_dataframe(df_stats: pd.DataFrame) -> pd.DataFrame:
     """Clean and prepare stats dataframe for Supabase."""
     # Rename columns to match schema
     df_stats = df_stats.rename(columns={
-        "fg%": "fg_pct",
-        "3p": "three_p",
-        "3pa": "three_pa",
-        "3p%": "three_p_pct",
-        "ft%": "ft_pct",
-        "+/-": "plus_minus",
+        "3p": "tp",
+        "3pa": "tpa",
+        "+/-": "pm",
     })
 
+    # Drop percentage columns (can be calculated from made/attempted)
+    pct_cols = ["fg%", "3p%", "ft%"]
+    df_stats = df_stats.drop(columns=[col for col in pct_cols if col in df_stats.columns], errors="ignore")
+
     # Convert integer columns
-    int_cols = ["fg", "fga", "three_p", "three_pa", "ft", "fta", "orb", "drb", "trb", "ast", "stl", "blk", "tov", "pf", "pts"]
+    int_cols = ["mp", "fg", "fga", "tp", "tpa", "ft", "fta", "orb", "drb", "trb", "ast", "stl", "blk", "tov", "pf", "pts", "pm"]
     for col in int_cols:
         df_stats[col] = pd.to_numeric(df_stats[col], errors="coerce").fillna(0).astype(int)
+    
+    # Convert float columns
+    float_cols = ["gmsc"]
+    for col in float_cols:
+        df_stats[col] = pd.to_numeric(df_stats[col], errors="coerce").fillna(0.0).astype(float)
 
     # Convert boolean columns
     for col in ["start", "win"]:
@@ -120,8 +144,8 @@ def _clean_stats_dataframe(df_stats: pd.DataFrame) -> pd.DataFrame:
 
 def _scrape_game_stats(game_element, season) -> pd.DataFrame:
     """Scrapes NBA stats from game HTML element."""
-    dfs, scores = _fetch_game_page_data(game_element)
-    df_stats = _get_df_stats(dfs, scores)
+    tables, scores = _fetch_game_page_data(game_element)
+    df_stats = _get_df_stats(tables, scores)
     df_stats["game_id"] = _get_game_id(game_element)
     df_stats["season"] = season
     df_stats = _clean_stats_dataframe(df_stats)
@@ -136,12 +160,10 @@ def scrape_games(season: int = None) -> None:
     print(f"Scraping games for season {season}...")
 
     # Load calendar data from Supabase
-    df_calendar = load_dataframe_from_supabase(CALENDAR_TABLE)
-    df_calendar = df_calendar[df_calendar["season"] == season]
+    df_calendar = load_dataframe_from_supabase(TABLE_CALENDAR.name, {"season": season})
 
     # Load games data from Supabase
-    df_games = load_dataframe_from_supabase(GAMES_TABLE)
-    df_games = df_games[df_games["season"] == season] if not df_games.empty else pd.DataFrame()
+    df_games = load_dataframe_from_supabase(TABLE_GAMES.name, {"season": season})
 
     # Get unscraped dates
     unscraped_dates = _get_unscraped_dates(df_calendar=df_calendar, df_games=df_games)
@@ -162,26 +184,27 @@ def scrape_games(season: int = None) -> None:
             # Scrape game information
             df_game = _scrape_game(game_element, date, season)
 
+            # Scrape game stats
+            df_stats = _scrape_game_stats(game_element, season)
+
+            # Save stats to Supabase
+            save_dataframe_to_supabase(
+                df=df_stats,
+                table_name=TABLE_STATS.name,
+                index_columns=["game_id", "player_id"],
+                upsert=True,
+            )
+            
             # Save game to Supabase
             save_dataframe_to_supabase(
                 df=df_game,
-                table_name=GAMES_TABLE,
+                table_name=TABLE_GAMES.name,
                 index_columns=["game_id"],
                 upsert=True,
             )
 
-            # Update local df_games for checking unscraped games
-            df_games = pd.concat([df_games, df_game], ignore_index=True)
-
-            # Scrape game stats
-            df_stat = _scrape_game_stats(game_element, season)
-
-            # Save stats to Supabase
-            save_dataframe_to_supabase(
-                df=df_stat,
-                table_name=STATS_TABLE,
-                index_columns=["game_id", "player"],
-                upsert=True,
-            )
-
     print(f"✓ Game stats up to date for season {season}!")
+
+    
+    if __name__ == "__main__":
+        scrape_games()

@@ -4,8 +4,9 @@ from datetime import datetime
 
 import pandas as pd
 
-from src.supabase.table_names import INJURIES_TABLE
-from supabase.utils import save_dataframe_to_supabase
+from src.supabase.tables import TABLE_INJURIES
+from src.supabase.utils import save_dataframe_to_supabase
+
 
 WEBSITE_URL = "https://www.cbssports.com/nba/injuries/"
 
@@ -17,7 +18,7 @@ def _combine_dfs_injuries(dfs: list[pd.DataFrame]) -> pd.DataFrame:
         if ("Player" not in df.columns) | ("Injury Status" not in df.columns):
             pass
         df = df[["Player", "Injury Status"]]
-        df.columns = ["name", "status"]
+        df.columns = ["player", "status"]
         df_injuries = pd.concat([df_injuries, df]).reset_index(drop=True)
     return df_injuries
 
@@ -25,18 +26,16 @@ def _combine_dfs_injuries(dfs: list[pd.DataFrame]) -> pd.DataFrame:
 def _clean_df_injuries(df_injuries: pd.DataFrame) -> pd.DataFrame:
     """Cleans dataframe with injuries information."""
     df_injuries = df_injuries.reset_index(drop=True)
-    names = df_injuries["name"].values
+    names = df_injuries["player"].values
     for i in range(len(names)):
         first_name = names[i].split(" ")[-1]
         name_index = names[i].find(first_name) + len(first_name)
         names[i] = names[i][name_index:]
-    df_injuries["name"] = names
-    df_injuries["status"] = df_injuries["status"].str.replace("Expected to be out until at least ", "")
-    df_injuries["status"] = df_injuries["status"].str.replace("Game Time Decision", "gtd")
+    df_injuries["player"] = names
     return df_injuries
 
 
-def scrape_injuries(table_name: str = INJURIES_TABLE) -> None:
+def scrape_injuries() -> None:
     """Scrapes NBA injured players and saves to Supabase."""
     print("Scraping injuries...")
 
@@ -44,14 +43,20 @@ def scrape_injuries(table_name: str = INJURIES_TABLE) -> None:
     dfs = pd.read_html(WEBSITE_URL)
     df_injuries = _combine_dfs_injuries(dfs)
     df_injuries = _clean_df_injuries(df_injuries)
-    df_injuries = df_injuries.sort_values(by="name", ignore_index=True)
-    df_injuries["scraped_at"] = datetime.now().isoformat()
+    df_injuries = df_injuries.sort_values(by="player", ignore_index=True)
+    df_injuries["scraped_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     # Save to Supabase (upsert will update all existing records with fresh data)
     save_dataframe_to_supabase(
         df=df_injuries,
-        table_name=table_name,
-        index_columns=["name"],
+        table_name=TABLE_INJURIES.name,
+        index_columns=["player"],
         upsert=True,
         replace=True,
     )
+
+    print(f"✓ Scraped {len(df_injuries)} injuries and saved to Supabase")
+
+
+if __name__ == "__main__":
+    scrape_injuries()

@@ -9,8 +9,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from src.scraping.utils import get_chrome_driver
-from src.supabase.table_names import LINEUPS_TABLE, TEAMS_TABLE
-from supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.supabase.tables import TABLE_LINEUPS, TABLE_TEAMS
+from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+
 
 WEBSITE_URL = "https://basketballmonster.com/nbalineups.aspx"
 
@@ -36,7 +37,12 @@ def _remove_suffixes(strings: list[str]) -> tuple[list[str], list[str]]:
     return cleaned_strings, statuses
 
 
-def _parse_lineups_from_page(page_source: str, df_teams: pd.DataFrame, teams_found: set, teams_with_lineups: set) -> tuple[pd.DataFrame, set, set]:
+def _parse_lineups_from_page(
+    page_source: str,
+    df_teams: pd.DataFrame,
+    teams_found: set,
+    teams_with_lineups: set,
+) -> tuple[pd.DataFrame, set, set]:
     """Parses lineups from the current page HTML.
     
     Returns:
@@ -65,7 +71,7 @@ def _parse_lineups_from_page(page_source: str, df_teams: pd.DataFrame, teams_fou
             if team_code in teams_with_lineups:
                 continue
 
-            team_name = df_teams.loc[df_teams.team_code == team_code, "team"].values[0]
+            team_name = df_teams.loc[df_teams["fanta_team"] == team_code, "team"].values[0]
             players, statuses = _remove_suffixes(df.iloc[:, col].to_list())
             temp = pd.DataFrame({"team": [team_name]*5, "player": players, "status": statuses})
             df_lineups = pd.concat([df_lineups, temp], ignore_index=True)
@@ -76,7 +82,7 @@ def _parse_lineups_from_page(page_source: str, df_teams: pd.DataFrame, teams_fou
 
 def _scrape_lineups() -> pd.DataFrame:
     """Scrapes next game lineups from basketballmonster.com using Selenium."""
-    df_teams = load_dataframe_from_supabase(TEAMS_TABLE)
+    df_teams = load_dataframe_from_supabase(TABLE_TEAMS.name)
 
     # Initialize empty dataframe and sets
     df_lineups = pd.DataFrame()
@@ -120,7 +126,7 @@ def _scrape_lineups() -> pd.DataFrame:
 
     # Report completely missing teams
     if len(teams_found) < 30:
-        all_teams = set(df_teams.team_code.values)
+        all_teams = set(df_teams["fanta_team"].values)
         missing_teams = all_teams - teams_found
         print(f"Warning: Only found {len(teams_found)} teams. Missing: {missing_teams}")
 
@@ -129,21 +135,26 @@ def _scrape_lineups() -> pd.DataFrame:
 
 
 def scrape_lineups() -> None:
-    """Scrapes NBA lineups from https://basketballmonster.com/nbalineups and saves to Supabase."""
+    """Scrapes NBA lineups from https://basketballmonster.com/nbalineups."""
     print("Scraping lineups...")
 
     # Scrape upcoming lineups
     df_lineups = _scrape_lineups()
 
     # Validate no duplicates
-    assert not df_lineups.duplicated(subset=["player"]).any(), "Duplicated 'player' in lineups."
+    assert not df_lineups.duplicated(subset=["player"]).any(), \
+       f"Duplicated found:\n{df_lineups[df_lineups.duplicated(subset=['player'])]}"
 
     # Save to Supabase
     save_dataframe_to_supabase(
         df=df_lineups,
-        table_name=LINEUPS_TABLE,
+        table_name=TABLE_LINEUPS.name,
         index_columns=["player"],
         replace=True,
     )
 
     print("✓ Lineups updated.")
+
+
+if __name__ == "__main__":
+    scrape_lineups()

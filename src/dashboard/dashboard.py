@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import utils
 from dash import Dash, Input, Output, dash_table, dcc, html
 
+
 # Set parameters
 NUM_PLAYERS = 8
 NUM_VISIBLE_PLAYERS = 3

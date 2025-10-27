@@ -3,12 +3,12 @@
 import time
 
 import pandas as pd
+from src.supabase.table_names import TABLE_CALENDAR
 
 from src.scraping.utils import get_current_season
-from src.supabase.table_names import CALENDAR_TABLE
 from src.supabase.utils import save_dataframe_to_supabase
 
-WEBSITE_URL = "https://www.basketball-reference.com"
+
 MONTHS = ["october", "november", "december", "january", "february", "march", "april"]
 
 
@@ -23,7 +23,8 @@ def scrape_calendar(season: int = None) -> None:
     for month in MONTHS:
         print(f"  Scraping {month.capitalize()}...")
         time.sleep(4) # Basketball Reference rate is 20 requests per minute
-        df = pd.read_html(WEBSITE_URL + f"/leagues/NBA_{season+1}_games-{month}.html")[0]
+        url = f"https://www.basketball-reference.com/leagues/NBA_{season+1}_games-{month}.html"
+        df = pd.read_html(url)[0]
         df = df[["Date", "Visitor/Neutral", "Home/Neutral"]]
         df.columns = ["date", "team_visitor", "team_home"]
         df["date"] = pd.to_datetime(df["date"])
@@ -41,7 +42,11 @@ def scrape_calendar(season: int = None) -> None:
     # Save to Supabase
     save_dataframe_to_supabase(
         df=df_calendar,
-        table_name=CALENDAR_TABLE,
+        table_name=TABLE_CALENDAR.name,
         index_columns=["season", "date", "team_home"],
         upsert=True,
     )
+
+
+if __name__ == "__main__":
+    scrape_calendar()

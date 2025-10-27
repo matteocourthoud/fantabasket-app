@@ -11,6 +11,7 @@ from model.predict_gain import GainModel
 
 from src.scraping.scrape_games import Scraper
 
+
 CALENDAR_FILE = "calendar.csv"
 GAMES_FILE = "games.csv"
 INJURIES_FILE = "injuries.csv"
