@@ -59,21 +59,11 @@ def main():
         st.success("🎉 No injuries reported! All players are healthy.")
         return
 
-    # Get summary
-    summary = injuries_logic.get_injury_summary(injuries_df)
-
-    # Display summary metrics
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Total Injuries", summary["total_injuries"])
-    with col2:
-        st.metric("Players Affected", summary["unique_players"])
- 
     # Remove 'scraped_at' column if present
     if "scraped_at" in df_injuries.columns:
         df_injuries = df_injuries.drop(columns=["scraped_at"])
 
-    st.dataframe(df_injuries, use_container_width=True, hide_index=True)
+    st.dataframe(df_injuries, width="stretch", hide_index=True)
 
 
 if __name__ == "__main__":

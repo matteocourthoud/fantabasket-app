@@ -88,16 +88,14 @@ def main():
         player_avg_stats.style.format("{:.1f}", subset=numeric_cols_to_format)
         .set_properties(**{"font-weight": "100"})
         .set_properties(subset=["player", "value"], **{"font-weight": "bold"})
-        .applymap(color_avg_gain, subset=["gain"])
+        .map(color_avg_gain, subset=["gain"])
     )
 
+    # Add some spacing before the table
     st.markdown("")
 
-    st.dataframe(
-        styled_df,
-        use_container_width=True,
-        hide_index=True,
-    )
+    # Display the styled dataframe
+    st.dataframe(styled_df, width="stretch", hide_index=True)
 
 
 if __name__ == "__main__":

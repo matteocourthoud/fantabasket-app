@@ -1,9 +1,12 @@
 """Players page UI - individual player statistics and performance."""
+
 import os
 import sys
 
 import pandas as pd
+
 import streamlit as st
+
 
 # Add the project root to the Python path
 sys.path.append(
@@ -80,7 +83,7 @@ def main():
         )
 
         # Display the table
-        st.dataframe(recent_games, use_container_width=True, hide_index=True)
+        st.dataframe(recent_games, width="stretch", hide_index=True)
     else:
         st.info("No game data available for this player.")
 
@@ -120,7 +123,6 @@ def main():
 
         # Create the line chart
         chart_data = performance_data[["date", metric_column]].set_index("date")
-
         st.line_chart(chart_data, y=metric_column)
 
         # Add a moving average option
