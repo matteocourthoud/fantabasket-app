@@ -34,7 +34,7 @@ def main():
     disable_button = False
     if pd.notnull(scraped_at):
         last_scraped_time = pd.to_datetime(scraped_at)
-        time_diff = pd.Timestamp.utcnow() - last_scraped_time
+        time_diff = pd.Timestamp.utcnow().replace(tzinfo=None) - last_scraped_time
         if time_diff.total_seconds() < 600:  # 10 minutes
             disable_button = True
             st.warning(f"Injuries were scraped {int(time_diff.total_seconds()/60):} minutes ago. Please wait before scraping again.")

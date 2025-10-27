@@ -1,7 +1,5 @@
 """Scrapes NBA players' injuries from www.cbssports.com/nba/injuries/."""
 
-from datetime import datetime
-
 import pandas as pd
 
 from src.supabase.tables import TABLE_INJURIES
