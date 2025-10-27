@@ -95,7 +95,14 @@ def main():
     st.markdown("")
 
     # Display the styled dataframe
-    st.dataframe(styled_df, width="stretch", hide_index=True)
+    st.dataframe(
+        styled_df,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "player": st.column_config.Column(pinned=True, width="medium"),
+        }
+)
 
 
 if __name__ == "__main__":
