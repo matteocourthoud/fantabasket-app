@@ -9,7 +9,8 @@ import streamlit as st
 st.set_page_config(
     page_title="Fantabasket",
     layout="centered",  # Better for mobile
-    initial_sidebar_state="collapsed"  # Start with sidebar closed on mobile
+    page_icon="icon.png",
+    initial_sidebar_state="auto",  # Start with sidebar closed on mobile
 )
 
 # Get other pages
@@ -35,6 +36,7 @@ injuries_page = st.Page(
 
 def home():
     """Home page of the Streamlit application."""
+    st.logo("icon.png")
     st.title("Fantabasket Dashboard")
 
     # Welcome message
@@ -58,6 +60,7 @@ pg = st.navigation(
         injuries_page,
     ]
 )
+
 
 # Run the selected page
 pg.run()
