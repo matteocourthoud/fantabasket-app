@@ -4,14 +4,31 @@ import os
 
 from dotenv import load_dotenv
 
+import streamlit as st
 from supabase import Client, create_client
 
 
-# Load environment variables from .env file
-load_dotenv()
+def _get_supabase_credentials() -> tuple[str, str]:
+    """Get Supabase credentials from either .env or Streamlit secrets."""
+    # First try environment variables
+    load_dotenv()
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    
+    # If not found, try Streamlit secrets
+    if not url or not key:
+        try:
+            url = st.secrets.connections.supabase.SUPABASE_URL
+            key = st.secrets.connections.supabase.SUPABASE_KEY
+        except (AttributeError, KeyError):
+            raise ValueError(
+                "Supabase credentials not found. Please set either:\n"
+                "1. SUPABASE_URL and SUPABASE_KEY in .env file, or\n"
+                "2. connections.supabase credentials in .streamlit/secrets.toml"
+            )
+    
+    return url, key
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 _client: Client | None = None
 
@@ -20,10 +37,6 @@ def get_supabase_client() -> Client:
     """Get or create Supabase client singleton."""
     global _client
     if _client is None:
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            raise ValueError(
-                "SUPABASE_URL and SUPABASE_KEY must be set in environment variables. "
-                "Please create a .env file with these values.",
-            )
-        _client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        url, key = _get_supabase_credentials()
+        _client = create_client(url, key)
     return _client
