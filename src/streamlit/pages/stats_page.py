@@ -100,7 +100,7 @@ def main():
         width="stretch",
         hide_index=True,
         column_config={
-            "player": st.column_config.Column(pinned=True, width="medium"),
+            "player": st.column_config.Column(pinned=True),
         }
 )
 
