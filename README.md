@@ -2,8 +2,6 @@
 
 A comprehensive fantasy basketball analytics platform that scrapes NBA statistics, computes fantasy basketball scores and player valuations, and presents them in an interactive Streamlit dashboard.
 
-![preview](img/preview.png)
-
 ## Features
 
 - 📊 Real-time NBA statistics scraping from multiple sources
