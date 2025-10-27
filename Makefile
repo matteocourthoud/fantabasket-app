@@ -9,8 +9,8 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 venv:
-	@echo "Creating virtual environment with POkython 3.11..."
-	test -d venv || python3.11 -m venv venv
+	@echo "Creating virtual environment with Python 3.13.9..."
+	test -d venv || python3.13 -m venv venv
 
 install-deps: clean venv
 	@echo "Installing Python dependencies using uv..."
