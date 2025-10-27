@@ -44,7 +44,7 @@ def scrape_injuries() -> None:
     df_injuries = _combine_dfs_injuries(dfs)
     df_injuries = _clean_df_injuries(df_injuries)
     df_injuries = df_injuries.sort_values(by="player", ignore_index=True)
-    df_injuries["scraped_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    df_injuries["scraped_at"] = pd.Timestamp.utcnow().strftime("%Y-%m-%d %H:%M")
 
     # Save to Supabase (upsert will update all existing records with fresh data)
     save_dataframe_to_supabase(
