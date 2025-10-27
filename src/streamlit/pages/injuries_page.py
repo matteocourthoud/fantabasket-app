@@ -37,7 +37,7 @@ def main():
         time_diff = pd.Timestamp.now() - last_scraped_time
         if time_diff.total_seconds() < 600:  # 10 minutes
             disable_button = True
-            st.warning("Injuries were scraped less than 10 minutes ago. Please wait before scraping again.")
+            st.warning(f"Injuries were scraped {int(time_diff.total_seconds()/60):} minutes ago. Please wait before scraping again.")
         else:
             st.info(f"Last scraped at: {scraped_at}")
 
