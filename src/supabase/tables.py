@@ -1,7 +1,6 @@
 """Supabase table schema definitions."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -22,7 +21,7 @@ class Table:
     name: str
     columns: list[Column]
     
-    def get_column(self, name: str) -> Optional[Column]:
+    def get_column(self, name: str) -> Column | None:
         """Get a column by name."""
         for col in self.columns:
             if col.name == name:
@@ -153,7 +152,23 @@ TABLE_INJURIES = Table(
     columns=[
         Column("player", "text", is_primary=True, is_unique=True),
         Column("status", "text"),
-        Column("scraped_at", "timestamp"),
+    ],
+)
+
+TABLE_PLAYER_NEWS = Table(
+    name="player_news",
+    columns=[
+        Column("player", "text", is_primary=True),
+        Column("news", "text"),
+        Column("scraped_at", "timestamptz"),
+    ],
+)
+
+TABLE_UPDATES = Table(
+    name="updates",
+    columns=[
+        Column("table_name", "text", is_primary=True, is_unique=True),
+        Column("last_updated", "timestamptz"),
     ],
 )
 
@@ -172,11 +187,8 @@ ALL_TABLES = [
     TABLE_TEAMS,
     TABLE_LINEUPS,
     TABLE_INJURIES,
+    TABLE_PLAYER_NEWS,
+    TABLE_UPDATES,
 ]
 
 TABLES_BY_NAME = {table.name: table for table in ALL_TABLES}
-
-
-def get_table_schema(table_name: str) -> Table | None:
-    """Get table schema by name."""
-    return TABLES_BY_NAME.get(table_name)

@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+from src.scraping.utils import clean_player_name
 from src.supabase.tables import TABLE_INJURIES
 from src.supabase.utils import save_dataframe_to_supabase
 
@@ -30,6 +31,7 @@ def _clean_df_injuries(df_injuries: pd.DataFrame) -> pd.DataFrame:
         name_index = names[i].find(first_name) + len(first_name)
         names[i] = names[i][name_index:]
     df_injuries["player"] = names
+    df_injuries["player"] = df_injuries["player"].apply(clean_player_name)
     return df_injuries
 
 
@@ -42,7 +44,6 @@ def scrape_injuries() -> None:
     df_injuries = _combine_dfs_injuries(dfs)
     df_injuries = _clean_df_injuries(df_injuries)
     df_injuries = df_injuries.sort_values(by="player", ignore_index=True)
-    df_injuries["scraped_at"] = pd.Timestamp.utcnow().strftime("%Y-%m-%d %H:%M")
 
     # Save to Supabase (upsert will update all existing records with fresh data)
     save_dataframe_to_supabase(

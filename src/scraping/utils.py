@@ -1,5 +1,7 @@
 """Utility functions for scraping."""
 
+import re
+import unicodedata
 from datetime import datetime
 
 from selenium import webdriver
@@ -25,3 +27,13 @@ def get_chrome_driver() -> webdriver.Chrome:
 
     driver = webdriver.Chrome(options=chrome_options)
     return driver
+
+
+def clean_player_name(name: str) -> str:
+    """Remove accents and non-letter characters from a player name."""
+    s = str(name)
+    s = unicodedata.normalize("NFKD", s)
+    s = s.encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^A-Za-z\s]", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s

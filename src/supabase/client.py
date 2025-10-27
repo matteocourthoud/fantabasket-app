@@ -4,7 +4,6 @@ import os
 
 from dotenv import load_dotenv
 
-import streamlit as st
 from supabase import Client, create_client
 
 
@@ -18,6 +17,7 @@ def _get_supabase_credentials() -> tuple[str, str]:
     # If not found, try Streamlit secrets
     if not url or not key:
         try:
+            import streamlit as st
             url = st.secrets.connections.supabase.SUPABASE_URL
             key = st.secrets.connections.supabase.SUPABASE_KEY
         except (AttributeError, KeyError):

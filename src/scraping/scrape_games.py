@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from src.scraping.utils import get_current_season
+from src.scraping.utils import get_current_season, clean_player_name
 from src.supabase.tables import TABLE_CALENDAR, TABLE_GAMES, TABLE_STATS
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
@@ -110,12 +110,16 @@ def _scrape_games_from_date(date: str) -> list:
 
 def _clean_stats_dataframe(df_stats: pd.DataFrame) -> pd.DataFrame:
     """Clean and prepare stats dataframe for Supabase."""
+    
     # Rename columns to match schema
     df_stats = df_stats.rename(columns={
         "3p": "tp",
         "3pa": "tpa",
         "+/-": "pm",
     })
+
+    # Clean player names: remove accents and punctuation
+    df_stats["player"] = df_stats["player"].apply(clean_player_name)
 
     # Drop percentage columns (can be calculated from made/attempted)
     pct_cols = ["fg%", "3p%", "ft%"]

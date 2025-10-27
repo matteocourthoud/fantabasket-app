@@ -5,7 +5,7 @@ import re
 import pandas as pd
 from unidecode import unidecode
 
-from src.supabase.tables import TABLE_INITIAL_RATINGS, TABLE_PLAYERS, TABLE_STATS
+from src.supabase.tables import TABLE_INITIAL_VALUES, TABLE_PLAYERS, TABLE_STATS
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
@@ -51,7 +51,7 @@ def _get_unique_players_from_stats() -> pd.DataFrame:
 
 def _get_all_players_from_ratings() -> pd.DataFrame:
     """Get all players from the INITIAL_RATINGS_TABLE."""
-    df_ratings = load_dataframe_from_supabase(TABLE_INITIAL_RATINGS.name)
+    df_ratings = load_dataframe_from_supabase(TABLE_INITIAL_VALUES.name)
     
     # Get unique players with their fanta identifiers
     cols = ["fanta_player", "fanta_player_id"]

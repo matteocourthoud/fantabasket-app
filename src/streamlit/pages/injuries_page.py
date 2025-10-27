@@ -3,8 +3,6 @@
 import os
 import sys
 
-import pandas as pd
-
 import streamlit as st
 
 
@@ -15,53 +13,21 @@ sys.path.append(
 
 from logic import injuries_logic
 
-from src.scraping.scrape_injuries import scrape_injuries
+from src.supabase.utils import get_table_last_updated
 
 
 def main():
-    """Injuries page of the Streamlit application."""
     # Page title
     st.title("Player Injuries")
-
-    # Load injuries data
-    injuries_df = injuries_logic.load_injuries_data()
-
-    # Show last scraped_at if available
-    scraped_at = pd.to_datetime(injuries_df["scraped_at"], errors="coerce").max()
-    scraped_at = scraped_at.strftime("%Y-%m-%d %H:%M")
     
-    # Disable button if scraping in the last 10 minutes
-    disable_button = False
-    if pd.notnull(scraped_at):
-        last_scraped_time = pd.to_datetime(scraped_at)
-        time_diff = pd.Timestamp.utcnow().replace(tzinfo=None) - last_scraped_time
-        if time_diff.total_seconds() < 600:  # 10 minutes
-            disable_button = True
-            st.warning(f"Injuries were scraped {int(time_diff.total_seconds()/60):} minutes ago. Please wait before scraping again.")
-        else:
-            st.info(f"Last scraped at: {scraped_at}")
-
-    # Button to scrape latest injuries
-    if st.button("🔄 Scrape Latest Injuries", type="secondary", disabled=disable_button):
-        with st.spinner("Scraping injuries data..."):
-            try:
-                scrape_injuries()
-                st.success("✅ Injuries data updated successfully!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Error scraping injuries: {str(e)}")
-                return
+    # Show last update time from the updates table (UTC)
+    last_updated = get_table_last_updated("injuries")
+    text = f"Table last updated: {last_updated.strftime('%Y-%m-%d %H:%M')} UTC"
+    st.markdown(f'<p style="font-size:12px;">{text}</p>', unsafe_allow_html=True)
 
     # Load injuries data
     df_injuries = injuries_logic.load_injuries_data()
-
-    if len(df_injuries) == 0:
-        st.success("🎉 No injuries reported! All players are healthy.")
-        return
-
-    # Remove 'scraped_at' column if present
-    df_injuries = df_injuries.drop(columns=["scraped_at", "status"])
-
+    df_injuries = df_injuries.drop(columns=["scraped_at", "status"], errors="ignore")
     st.dataframe(df_injuries, width="stretch", hide_index=True)
 
 

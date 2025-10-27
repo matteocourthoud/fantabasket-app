@@ -13,9 +13,8 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
 
-from logic import players_logic  # noqa: E402
-
-from src.scraping.utils import get_current_season  # noqa: E402
+from src.scraping.utils import get_current_season
+from src.streamlit.logic import players_logic
 
 
 def main():
@@ -44,6 +43,21 @@ def main():
     if not selected_player:
         st.warning("No players available.")
         return
+    
+    # Player news box (auto-fetched, read-only)
+    st.subheader("Latest News")
+    
+    # Lazy import to avoid circular imports at module import time
+    from src.scraping.scrape_player_news import _scrape_player_news  # noqa: E402
+
+    with st.spinner("Fetching latest news..."):
+        news_df = _scrape_player_news(selected_player)
+
+    if news_df.empty:
+        st.info("No news found for this player.")
+    else:
+        news_text = news_df.iloc[0]["news"]
+        st.markdown(news_text.replace("\n", "  \n"))
 
     # Get player summary
     summary = players_logic.get_player_summary(
@@ -51,7 +65,7 @@ def main():
     )
 
     # Display summary metrics
-    st.subheader(f"{selected_player} - Season Summary")
+    st.subheader(f"Season Summary")
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
@@ -86,56 +100,6 @@ def main():
         st.dataframe(recent_games, width="stretch", hide_index=True)
     else:
         st.info("No game data available for this player.")
-
-    # Performance over time section
-    st.subheader("Performance Over Time")
-
-    # Get performance data
-    performance_data = players_logic.get_player_performance_over_time(
-        selected_player, data["stats"], data["games"]
-    )
-
-    if len(performance_data) > 0:
-        # Metric selection for plotting
-        metric_options = {
-            "Points": "pts",
-            "Rebounds": "trb",
-            "Assists": "ast",
-            "Plus/Minus": "pm",
-            "Minutes": "mp",
-            "Steals": "stl",
-            "Blocks": "blk",
-            "Turnovers": "tov",
-        }
-
-        # Filter out metrics that don't exist in the data
-        available_metrics = {
-            k: v for k, v in metric_options.items() if v in performance_data.columns
-        }
-
-        selected_metric = st.selectbox(
-            "Select metric to visualize:",
-            options=list(available_metrics.keys()),
-            index=0,
-        )
-
-        metric_column = available_metrics[selected_metric]
-
-        # Create the line chart
-        chart_data = performance_data[["date", metric_column]].set_index("date")
-        st.line_chart(chart_data, y=metric_column)
-
-        # Add a moving average option
-        if st.checkbox("Show moving average (3 games)"):
-            performance_data[f"{metric_column}_ma"] = (
-                performance_data[metric_column].rolling(window=3, min_periods=1).mean()
-            )
-            chart_data_ma = performance_data[
-                ["date", metric_column, f"{metric_column}_ma"]
-            ].set_index("date")
-            st.line_chart(chart_data_ma)
-    else:
-        st.info("No performance data available for this player.")
 
 
 if __name__ == "__main__":

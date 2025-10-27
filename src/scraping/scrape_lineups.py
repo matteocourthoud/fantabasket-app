@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from src.scraping.utils import get_chrome_driver
+from src.scraping.utils import clean_player_name, get_chrome_driver
 from src.supabase.tables import TABLE_LINEUPS, TABLE_TEAMS
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
@@ -118,6 +118,9 @@ def _scrape_lineups() -> pd.DataFrame:
         except Exception as e:
             print(f"Could not find next button after day {day + 1}: {e}")
             break
+        
+    # Clean player names
+    df_lineups["player"] = df_lineups["player"].apply(clean_player_name)
 
     # Report teams without lineups
     if len(teams_with_lineups) < len(teams_found):

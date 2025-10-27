@@ -1,9 +1,11 @@
 """Utility functions for Supabase database operations."""
 
+import datetime
 
 import pandas as pd
 
 from .client import get_supabase_client
+from .tables import TABLE_UPDATES
 
 
 def save_dataframe_to_supabase(
@@ -73,6 +75,13 @@ def save_dataframe_to_supabase(
 
         print(f"✓ Saved {len(records)} records to '{table_name}' table in Supabase")
 
+    # Update the updates table with the current timestamp
+    now_utc = datetime.datetime.now(datetime.UTC).isoformat()
+    client.table(TABLE_UPDATES.name).upsert(
+        {"table_name": table_name, "last_updated": now_utc},
+        on_conflict="table_name",
+    ).execute()
+
 
 
 def load_dataframe_from_supabase(
@@ -97,3 +106,12 @@ def load_dataframe_from_supabase(
     df = pd.DataFrame(response.data)
     print(f"✓ Loaded {len(df)} records from '{table_name}' table in Supabase")
     return df
+
+
+
+def get_table_last_updated(table_name: str) -> pd.Timestamp | None:
+    """Return the last_updated timestamp for a table from the updates table."""
+    df_updates = load_dataframe_from_supabase(TABLE_UPDATES.name)
+    matching = df_updates[df_updates.get("table_name") == table_name]
+    ts = pd.to_datetime(matching["last_updated"].iloc[0], errors="coerce")
+    return ts

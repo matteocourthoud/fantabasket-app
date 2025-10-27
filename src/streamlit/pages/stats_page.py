@@ -1,8 +1,10 @@
 """Stats page UI - displays player statistics with filters."""
 
 import streamlit as st
+import pandas as pd
 from src.scraping.utils import get_current_season
 from src.streamlit.logic import stats_logic
+from src.supabase.utils import get_table_last_updated
 
 
 def main():
@@ -67,42 +69,107 @@ def main():
         aggregation_method=aggregation_method.lower(),
     )
 
-    # Format numeric columns to 1 decimal place and highlight the value column
-    numeric_cols_to_format = player_avg_stats.select_dtypes(include="number").columns
+    # We'll build numeric recent-trend lists (see below) and render them
 
-    # Function to color avg_gain based on positive/negative values
-    def color_avg_gain(val):
-        """Color avg_gain green if positive, red if negative."""
-        try:
-            if val > 0:
-                return "color: #28a745; font-weight: bold"  # Softer green
-            elif val < 0:
-                return "color: #dc3545; font-weight: bold"  # Softer red
-            else:
-                return "font-weight: bold"
-        except (TypeError, ValueError):
-            return ""
+    # compute per-player recent scores from fanta_stats table
+    try:
+        from src.supabase.utils import load_dataframe_from_supabase
 
-    # Apply styling with thinner font and bold value column
-    styled_df = (
-        player_avg_stats.style.format("{:.1f}", subset=numeric_cols_to_format)
-        .set_properties(**{"font-weight": "100"})
-        .set_properties(subset=["player", "value"], **{"font-weight": "bold"})
-        .map(color_avg_gain, subset=["gain"])
-    )
+        df_fanta = load_dataframe_from_supabase("fanta_stats")
+        if not df_fanta.empty:
+            # group gains by player (sorted by game_id so lists are chronological)
+            score_map = (
+                df_fanta.sort_values("game_id")
+                .groupby("player")
+                ["gain"]
+                .apply(lambda s: s.dropna().tolist())
+                .to_dict()
+            )
+        else:
+            score_map = {}
+    except Exception:
+        score_map = {}
+
+    # trend string column removed; we'll compute numeric 'trend' lists later
+
+    # Reduce to only the requested columns (include player) and prepare formatting
+    # keep `gain` instead of `games` per request and show the gain histogram
+    display_cols = ["player", "team", "position", "value", "gain", "trend"]
+
+    # If some columns are missing, keep existing ones
+    display_cols = [c for c in display_cols if c in player_avg_stats.columns]
+
+    player_display = player_avg_stats[display_cols].copy()
 
     # Add some spacing before the table
     st.markdown("")
+    
+    # Show last update time from the updates table (UTC)
+    last_updated = get_table_last_updated("fanta_stats")
+    text = f"Table last updated: {last_updated.strftime('%Y-%m-%d %H:%M')} UTC"
+    st.markdown(f'<p style="font-size:12px;">{text}</p>', unsafe_allow_html=True)
 
-    # Display the styled dataframe
+    # Removed SVG sparkline code; we'll use Streamlit's BarChartColumn with
+    # numeric 'trend' lists below.
+
+    # Use Streamlit's native dataframe with a BarChartColumn for recent gains.
+    display_df = player_display.copy()
+
+    # Build a numeric list of recent gains (most recent 12) per player
+    def _recent_n_padded(scores: list[float], n: int = 5) -> list[float]:
+        """Return the most recent n scores, right-padded with zeros if needed."""
+        if not scores:
+            return [0.0] * n
+        recent = scores[-n:]
+        pad = [0.0] * (n - len(recent))
+        return recent + pad
+
+    display_df["trend"] = display_df["player"].apply(
+        lambda p: _recent_n_padded(score_map.get(p, []), n=5)
+    )
+
+    # Keep only the columns we want and limit rows for display
+    cols_order = [
+        c
+        for c in ["player", "team", "position", "value", "gain", "trend"]
+        if c in display_df.columns
+    ]
+    display_df = display_df[cols_order].head(500)
+
+    # Create a pandas Styler to format numbers and color the gain column
+    # Format value and gain to 1 decimal
+    styler = display_df.style.format({"value": "{:.1f}", "gain": "{:.1f}"})
+
+    # Color gain: green if positive, red if negative, muted otherwise
+    def _gain_style(v):
+        try:
+            if pd.isna(v):
+                return ""
+            if v > 0:
+                return "color: #28a745; font-weight: 600"
+            if v < 0:
+                return "color: #dc3545; font-weight: 600"
+            return "font-weight: 600"
+        except Exception:
+            return ""
+
+    if "gain" in display_df.columns:
+        styler = styler.applymap(_gain_style, subset=["gain"])
+
+    # Configure columns: pin player and render gain_hist as bar chart
+    col_config = {"player": st.column_config.Column(pinned=True)}
+    if "trend" in display_df.columns:
+        col_config["trend"] = st.column_config.BarChartColumn(
+            width="small", color="grey",
+        )
+
+    # Display the styled dataframe with Streamlit native renderer
     st.dataframe(
-        styled_df,
+        styler,
         width="stretch",
         hide_index=True,
-        column_config={
-            "player": st.column_config.Column(pinned=True),
-        }
-)
+        column_config=col_config,
+    )
 
 
 if __name__ == "__main__":

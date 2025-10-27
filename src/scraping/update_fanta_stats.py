@@ -3,12 +3,12 @@
 import pandas as pd
 
 from src.scraping.utils import get_current_season
-from src.supabase.table_names import (
-    FANTA_STATS_TABLE,
-    GAMES_TABLE,
-    INITIAL_VALUES_TABLE,
-    PLAYERS_TABLE,
-    STATS_TABLE,
+from src.supabase.tables import (
+    TABLE_FANTA_STATS,
+    TABLE_GAMES,
+    TABLE_INITIAL_VALUES,
+    TABLE_PLAYERS,
+    TABLE_STATS,
 )
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
@@ -90,7 +90,7 @@ def _compute_player_fanta_stats(player_games: pd.DataFrame, initial_value: float
     return pd.DataFrame(fanta_stats_list)
 
 
-def compute_fanta_stats(season: int = None) -> None:
+def update_fanta_stats(season: int = None) -> None:
     """Computes and saves fantabasket stats (value_before, value_after, gain) for a given season.
     
     For each player and each match in the stats table:
@@ -110,10 +110,10 @@ def compute_fanta_stats(season: int = None) -> None:
     print(f"Computing fanta stats for season {season}...")
 
     # Load required data from Supabase
-    stats_df = load_dataframe_from_supabase(STATS_TABLE, {"season": season})
-    games_df = load_dataframe_from_supabase(GAMES_TABLE, {"season": season})
-    initial_values_df = load_dataframe_from_supabase(INITIAL_VALUES_TABLE, {"season": season})
-    players_df = load_dataframe_from_supabase(PLAYERS_TABLE)
+    stats_df = load_dataframe_from_supabase(TABLE_STATS.name, {"season": season})
+    games_df = load_dataframe_from_supabase(TABLE_GAMES.name, {"season": season})
+    initial_values_df = load_dataframe_from_supabase(TABLE_INITIAL_VALUES.name, {"season": season})
+    players_df = load_dataframe_from_supabase(TABLE_PLAYERS.name)
 
     # Merge stats with game dates
     stats_df = pd.merge(
@@ -169,10 +169,13 @@ def compute_fanta_stats(season: int = None) -> None:
     # Save the computed stats to the fanta_stats table
     save_dataframe_to_supabase(
         df=all_fanta_stats,
-        table_name=FANTA_STATS_TABLE,
+        table_name=TABLE_FANTA_STATS.name,
         index_columns=["game_id", "player"],
         replace=True,
     )
     
     print(f"✓ Fanta stats saved for season {season}!")
 
+
+if __name__ == "__main__":
+    update_fanta_stats()

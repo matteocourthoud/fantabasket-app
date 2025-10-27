@@ -1,6 +1,6 @@
 """Main entry point for the Streamlit application."""
 
-from pages import injuries_page, players_page, stats_page
+from pages import injuries_page, players_page, stats_page, updates_page
 
 import streamlit as st
 
@@ -32,6 +32,12 @@ injuries_page = st.Page(
     icon=":material/healing:",
     url_path="injuries",
 )
+updates_page = st.Page(
+    updates_page.main,
+    title="Updates",
+    icon=":material/refresh:",
+    url_path="updates",
+)
 
 
 def home():
@@ -49,6 +55,8 @@ def home():
         st.switch_page(players_page)
     if st.button("Injuries", icon=":material/healing:", width=300):
         st.switch_page(injuries_page)
+    if st.button("Updates", icon=":material/refresh:", width=300):
+        st.switch_page(updates_page)
 
 
 # Define pages with icons
@@ -58,6 +66,7 @@ pg = st.navigation(
         stats_page,
         players_page,
         injuries_page,
+        updates_page,
     ]
 )
 

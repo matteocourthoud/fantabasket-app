@@ -2,6 +2,8 @@
 
 import os
 import sys
+import unicodedata
+import re
 
 import pandas as pd
 
@@ -21,15 +23,7 @@ from src.supabase.utils import load_dataframe_from_supabase  # noqa: E402
 
 
 def load_player_data(season: int) -> dict[str, pd.DataFrame]:
-    """
-    Load all required data for the players page.
-
-    Args:
-        season: The season to load data for
-
-    Returns:
-        Dictionary containing all loaded dataframes
-    """
+    """Load all required data for the players page."""
     data = {
         "stats": load_dataframe_from_supabase(TABLE_STATS.name, filters={"season": season}),
         "games": load_dataframe_from_supabase(TABLE_GAMES.name, filters={"season": season}),
@@ -39,16 +33,8 @@ def load_player_data(season: int) -> dict[str, pd.DataFrame]:
     return data
 
 
-def get_player_list(stats_df: pd.DataFrame) -> list[str]:
-    """
-    Get sorted list of unique player names.
-
-    Args:
-        stats_df: Player statistics dataframe
-
-    Returns:
-        Sorted list of player names
-    """
+def get_player_list(stats_df: pd.DataFrame) -> dict[str, str]:
+    """Return a mapping of simplified_name -> original_name for players."""
     return sorted(stats_df["player"].unique().tolist())
 
 
