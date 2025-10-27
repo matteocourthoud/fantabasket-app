@@ -1,0 +1,22 @@
+SHELL := /bin/bash
+.ONESHELL:
+.SHELLFLAGS := -e
+
+.PHONY: venv install-deps run-app clean
+
+clean:
+	@echo "Cleaning up Python cache files..."
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+venv:
+	@echo "Creating virtual environment with Python 3.11..."
+	test -d venv || python3.11 -m venv venv
+
+install-deps: clean venv
+	@echo "Installing Python dependencies using uv..."
+	. venv/bin/activate && pip install uv
+	. venv/bin/activate && uv pip install --index-url https://pypi.org/simple/ -r requirements.txt
+
+run-app:
+	@echo "Launching Streamlit application..."
+	. venv/bin/activate && python -m streamlit run src/streamlit/main.py
