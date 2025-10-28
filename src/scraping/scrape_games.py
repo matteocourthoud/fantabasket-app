@@ -209,6 +209,5 @@ def scrape_games(season: int = None) -> None:
 
     print(f"✓ Game stats up to date for season {season}!")
 
-    
-    if __name__ == "__main__":
-        scrape_games()
+if __name__ == "__main__":
+    scrape_games()
