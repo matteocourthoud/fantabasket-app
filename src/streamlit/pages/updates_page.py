@@ -5,10 +5,12 @@ import pandas as pd
 import streamlit as st
 from src.scraping.scrape_injuries import scrape_injuries
 from src.scraping.scrape_lineups import scrape_lineups
+from src.scraping.scrape_games import scrape_games
+from src.scraping.update_fanta_stats import update_fanta_stats
 from src.supabase.utils import load_dataframe_from_supabase
 
 
-TABLES_TO_UPDATE = ["injuries", "lineups", "fanta_stats"]
+TABLES_TO_UPDATE = ["injuries", "lineups", "stats", "fanta_stats"]
 
 
 def main():
@@ -56,6 +58,10 @@ def main():
                                 scrape_injuries()
                             elif table_name == "lineups":
                                 scrape_lineups()
+                            elif table_name == "stats":
+                                scrape_games()
+                            elif table_name == "fanta_stats":
+                                update_fanta_stats()
                             st.success(f"{table_name.capitalize()} updated")
                             st.rerun()
                         except Exception as e:
