@@ -23,6 +23,7 @@ def main():
     all_teams = stats_logic.get_team_list(data["games"])
 
     # Page title
+    st.set_page_config(layout="wide")
     st.title("Player Stats")
 
     # Filters
@@ -47,7 +48,7 @@ def main():
     with col4:
         # Get min and max values
         min_value = 4.0
-        max_value = 35.0
+        max_value = 30.0
 
         value_range = st.slider(
             "Value Range:",
@@ -58,7 +59,7 @@ def main():
         )
 
     # Process and filter player stats
-    player_avg_stats = stats_logic.process_player_stats(
+    df_stats = stats_logic.process_player_stats(
         stats_df=stats_df,
         games_df=data["games"],
         fanta_stats_df=data["fanta_stats"],
@@ -68,8 +69,6 @@ def main():
         value_range=value_range,
         aggregation_method=aggregation_method.lower(),
     )
-
-    # We'll build numeric recent-trend lists (see below) and render them
 
     # compute per-player recent scores from fanta_stats table
     try:
@@ -90,17 +89,6 @@ def main():
     except Exception:
         score_map = {}
 
-    # trend string column removed; we'll compute numeric 'trend' lists later
-
-    # Reduce to only the requested columns (include player) and prepare formatting
-    # keep `gain` instead of `games` per request and show the gain histogram
-    display_cols = ["player", "team", "position", "value", "gain", "trend"]
-
-    # If some columns are missing, keep existing ones
-    display_cols = [c for c in display_cols if c in player_avg_stats.columns]
-
-    player_display = player_avg_stats[display_cols].copy()
-
     # Add some spacing before the table
     st.markdown("")
     
@@ -109,13 +97,8 @@ def main():
     text = f"Table last updated: {last_updated.strftime('%Y-%m-%d %H:%M')} UTC"
     st.markdown(f'<p style="font-size:12px;">{text}</p>', unsafe_allow_html=True)
 
-    # Removed SVG sparkline code; we'll use Streamlit's BarChartColumn with
-    # numeric 'trend' lists below.
 
-    # Use Streamlit's native dataframe with a BarChartColumn for recent gains.
-    display_df = player_display.copy()
-
-    # Build a numeric list of recent gains (most recent 12) per player
+    # Build a numeric list of recent gains (most recent 5) per player
     def _recent_n_padded(scores: list[float], n: int = 5) -> list[float]:
         """Return the most recent n scores, right-padded with zeros if needed."""
         if not scores:
@@ -124,21 +107,25 @@ def main():
         pad = [0.0] * (n - len(recent))
         return recent + pad
 
-    display_df["trend"] = display_df["player"].apply(
+    df_stats["trend"] = df_stats["player"].apply(
         lambda p: _recent_n_padded(score_map.get(p, []), n=5)
     )
 
-    # Keep only the columns we want and limit rows for display
-    cols_order = [
-        c
-        for c in ["player", "team", "position", "value", "gain", "trend"]
-        if c in display_df.columns
-    ]
-    display_df = display_df[cols_order].head(500)
+     # Reduce to only the requested columns (include player) and prepare formatting
+    display_cols = ["player", "value", "gain", "trend", "mp", "pts", "trb", "ast", "stl", "blk", "team", "position"]
+    df_stats = df_stats[display_cols]
 
     # Create a pandas Styler to format numbers and color the gain column
-    # Format value and gain to 1 decimal
-    styler = display_df.style.format({"value": "{:.1f}", "gain": "{:.1f}"})
+    styler = df_stats.style.format({
+        "value": "{:.1f}",
+        "gain": "{:.1f}",
+        "mp": "{:.1f}",
+        "pts": "{:.1f}",
+        "trb": "{:.1f}",
+        "ast": "{:.1f}",
+        "stl": "{:.1f}",
+        "blk": "{:.1f}",
+    })
 
     # Color gain: green if positive, red if negative, muted otherwise
     def _gain_style(v):
@@ -153,15 +140,11 @@ def main():
         except Exception:
             return ""
 
-    if "gain" in display_df.columns:
-        styler = styler.applymap(_gain_style, subset=["gain"])
+    styler = styler.applymap(_gain_style, subset=["gain"])
 
     # Configure columns: pin player and render gain_hist as bar chart
     col_config = {"player": st.column_config.Column(pinned=True)}
-    if "trend" in display_df.columns:
-        col_config["trend"] = st.column_config.BarChartColumn(
-            width="small", color="grey",
-        )
+    col_config["trend"] = st.column_config.BarChartColumn(width="small", color="grey")
 
     # Display the styled dataframe with Streamlit native renderer
     st.dataframe(

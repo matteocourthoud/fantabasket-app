@@ -21,15 +21,7 @@ from src.supabase.utils import load_dataframe_from_supabase  # noqa: E402
 
 
 def load_all_data(season: int) -> dict[str, pd.DataFrame]:
-    """
-    Load all required data for the stats page.
-
-    Args:
-        season: The season to load data for
-
-    Returns:
-        Dictionary containing all loaded dataframes
-    """
+    """Load all required data for the stats page."""
     data = {
         "stats": load_dataframe_from_supabase(
             TABLE_STATS.name, filters={"season": season}
@@ -50,17 +42,7 @@ def load_all_data(season: int) -> dict[str, pd.DataFrame]:
 def merge_player_data(
     stats_df: pd.DataFrame, players_df: pd.DataFrame, initial_values_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """
-    Merge stats with player and position information.
-
-    Args:
-        stats_df: Player statistics dataframe
-        players_df: Players dataframe
-        initial_values_df: Initial values dataframe with positions
-
-    Returns:
-        Merged dataframe with player and position info
-    """
+    """Merge stats with player and position information."""
     # Merge stats with players to get fanta_player_id
     stats_df = pd.merge(
         stats_df, players_df[["player", "fanta_player_id"]], on="player", how="left"
@@ -117,7 +99,7 @@ def calculate_player_averages(
 
     # Group by player and position, calculate the aggregation of numeric stats
     numeric_cols = stats_df.select_dtypes(include="number").columns
-    cols_to_exclude = ["id", "game_id", "player_id", "season"]
+    cols_to_exclude = ["game_id", "player_id", "season"]
     cols_to_agg = [col for col in numeric_cols if col not in cols_to_exclude]
 
     # Map aggregation method to pandas function name
@@ -145,17 +127,8 @@ def calculate_player_averages(
 def get_player_teams(
     stats_df: pd.DataFrame, games_df: pd.DataFrame, teams_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """
-    Get the current team for each player based on most recent game.
+    """Get the current team for each player based on most recent game."""
 
-    Args:
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
-        teams_df: Teams dataframe with team codes
-
-    Returns:
-        Dataframe with player and their current team code
-    """
     # Merge stats with games to get team info
     stats_with_games = pd.merge(
         stats_df[["player", "game_id", "win"]],
@@ -178,14 +151,8 @@ def get_player_teams(
     )
 
     # Map team names to team codes
-    # Handle case where teams_df might be empty or team_short column doesn't exist
-    if not teams_df.empty and "team_short" in teams_df.columns:
-        team_mapping = teams_df.set_index("team")["team_short"].to_dict()
-        # Map and fill NaN with original team name if mapping fails
-        player_teams["team_mapped"] = player_teams["team"].map(team_mapping)
-        player_teams["team"] = player_teams["team_mapped"].fillna(player_teams["team"])
-        player_teams = player_teams.drop(columns=["team_mapped"])
-    # If mapping fails or teams_df is empty, keep original team names
+    team_mapping = teams_df.set_index("team_short")["fanta_team"].to_dict()
+    player_teams["team"] = player_teams["team"].map(team_mapping)
 
     return player_teams
 
@@ -193,16 +160,7 @@ def get_player_teams(
 def add_player_valuations(
     player_stats: pd.DataFrame, fanta_stats_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """
-    Add current valuation and average gain to player stats.
-
-    Args:
-        player_stats: Player statistics dataframe
-        fanta_stats_df: Fantasy stats dataframe
-
-    Returns:
-        Player stats with value and gain columns
-    """
+    """Add current valuation and average gain to player stats."""
     # Get the most recent value_after for each player (current valuation)
     player_current_value = (
         fanta_stats_df.groupby("player")
@@ -217,15 +175,7 @@ def add_player_valuations(
 
 
 def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Reorder columns to show priority columns first.
-
-    Args:
-        df: Dataframe to reorder
-
-    Returns:
-        Dataframe with reordered columns
-    """
+    """Reorder columns to show priority columns first."""
     cols = df.columns.tolist()
     priority_cols = ["player", "team", "position", "games", "value", "gain"]
     other_cols = [col for col in cols if col not in priority_cols]
@@ -237,17 +187,7 @@ def apply_filters(
     team: str | None = None,
     value_range: tuple[float, float] | None = None,
 ) -> pd.DataFrame:
-    """
-    Apply team and value range filters to dataframe.
-
-    Args:
-        df: Dataframe to filter
-        team: Team to filter by (None or "All" for no filter)
-        value_range: Tuple of (min_value, max_value) for filtering
-
-    Returns:
-        Filtered dataframe
-    """
+    """Apply team and value range filters to dataframe."""
     # Filter by team if specified
     if team and team != "All":
         df = df[df["team"] == team]
