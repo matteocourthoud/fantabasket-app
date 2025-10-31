@@ -147,10 +147,9 @@ def main():
     # Display the dataframe with clickable player links
     st.dataframe(
         styler,
-        width="stretch",
         hide_index=True,
         column_config=col_config,
-        use_container_width=True,
+        width="stretch",
     )
 
 
