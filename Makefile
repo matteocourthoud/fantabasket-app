@@ -17,6 +17,11 @@ install-deps: clean venv
 	. venv/bin/activate && pip install uv
 	. venv/bin/activate && uv pip install --index-url https://pypi.org/simple/ -r requirements.txt
 
-run-app:
+scrape:
+	@echo "Running data scraping scripts..."
+	. venv/bin/activate && python -m src/scraping/scrape_injuries
+	. venv/bin/activate && python -m src/scraping/scrape_games
+
+run:
 	@echo "Launching Streamlit application..."
 	. venv/bin/activate && python -m streamlit run src/streamlit/main.py
