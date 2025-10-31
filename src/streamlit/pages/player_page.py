@@ -15,7 +15,6 @@ from src.scraping.utils import get_current_season
 from src.streamlit.logic import player_logic
 
 
-
 def main():
     """Players page of the Streamlit application."""
     import datetime
@@ -74,7 +73,7 @@ def main():
         median_gain = player_fanta["gain"].median()
     
     # Metrics display
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3, width=300)
     col1.metric(
         "Current Value",
         f"{summary['current_value']:.1f}" if summary['current_value'] is not None else "-",

@@ -1,7 +1,5 @@
 """Team page UI - shows average opponent gain and average gain allowed by role for each team."""
 
-import pandas as pd
-
 import streamlit as st
 from src.streamlit.logic import teams_logic
 

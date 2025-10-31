@@ -21,33 +21,35 @@ def main():
     st.set_page_config(layout="wide")
     st.title("Player Stats")
 
-    # Filters
-    col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        aggregation_method = st.selectbox(
-            "Aggregation:",
-            ["mean", "sum", "median"],
-            index=0,
-        )
+    # Filters inside an expander
+    with st.expander("Filters", expanded=False):
+        col1, col2, col3, col4 = st.columns(4)
 
-    with col2:
-        all_positions = sorted(fanta_stats["position"].dropna().unique())
-        position_options = ["All"] + list(all_positions)
-        selected_position = st.selectbox("Select Position:", position_options)
+        with col1:
+            aggregation_method = st.selectbox(
+                "Aggregation:",
+                ["mean", "sum", "median"],
+                index=0,
+            )
 
-    with col3:
-        team_options = ["All"] + all_teams
-        selected_team = st.selectbox("Select Team:", team_options)
+        with col2:
+            all_positions = sorted(fanta_stats["position"].dropna().unique())
+            position_options = ["All"] + list(all_positions)
+            selected_position = st.selectbox("Select Position:", position_options)
 
-    with col4:
-        value_range = st.slider(
-            "Value Range:",
-            min_value=4.0,
-            max_value=30.0,
-            value=(4.0, 30.0),
-            step=1.0,
-        )
+        with col3:
+            team_options = ["All"] + all_teams
+            selected_team = st.selectbox("Select Team:", team_options)
+
+        with col4:
+            value_range = st.slider(
+                "Value Range:",
+                min_value=4.0,
+                max_value=30.0,
+                value=(4.0, 30.0),
+                step=1.0,
+            )
 
     # Process and filter player stats
     df_stats = stats_logic.process_player_stats(
@@ -103,12 +105,13 @@ def main():
     df_stats["player"] = df_stats["player"].apply(lambda name: f"/player?name={quote(name)}")
 
     # Reduce to only the requested columns (player, ...)
-    display_cols = ["player", "value", "gain", "trend", "mp", "pts", "trb", "ast", "stl", "blk", "team", "position"]
+    display_cols = ["player", "value", "score", "gain", "trend", "mp", "pts", "trb", "ast", "stl", "blk", "team", "position"]
     df_stats = df_stats[display_cols]
 
     # Create a pandas Styler to format numbers and color the gain column
     styler = df_stats.style.format({
         "value": "{:.1f}",
+        "score": "{:.1f}",
         "gain": "{:.1f}",
         "mp": "{:.1f}",
         "pts": "{:.1f}",

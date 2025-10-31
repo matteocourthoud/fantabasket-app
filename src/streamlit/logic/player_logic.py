@@ -140,7 +140,9 @@ def get_player_recent_games(
     )
 
     # Merge with fanta_stats to get gain (filter fanta_stats to this player to avoid duplicates)
-    player_fanta_stats = fanta_stats_df[fanta_stats_df["player"] == player_name][["game_id", "gain"]]
+    print(fanta_stats_df)
+    player_fanta_stats = fanta_stats_df[fanta_stats_df["player"] == player_name][["game_id", "gain", "fanta_score"]]
+    player_fanta_stats["score"] = player_fanta_stats["fanta_score"].astype(int)
     player_stats = pd.merge(
         player_stats,
         player_fanta_stats,
@@ -161,6 +163,7 @@ def get_player_recent_games(
         "date",
         "opponent",
         "win",
+        "score",
         "gain",
         "mp",
         "pts",

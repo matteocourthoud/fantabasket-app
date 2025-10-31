@@ -46,6 +46,7 @@ def calculate_player_aggregates(
         "game_id": "games",
         "value_after": "value",
         "fanta_team": "team",
+        "fanta_score": "score",
         })
     player_avg_stats["games"] = player_avg_stats["games"].astype(int)
     return player_avg_stats

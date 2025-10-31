@@ -33,11 +33,11 @@ def get_player_images():
             resp = requests.get(url, timeout=10)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
-            # Find the tag with itemscope="image"
-            itemscope_tag = soup.find(attrs={"itemscope": "image"})
+            # Find the <div class="media-item"> and the <img> inside it
+            media_item = soup.find("div", class_="media-item")
             img = None
-            if itemscope_tag:
-                img = itemscope_tag.find("img")
+            if media_item:
+                img = media_item.find("img")
             if not img or not img.get("src"):
                 print(f"No image found for {player_id} at {url}")
                 continue

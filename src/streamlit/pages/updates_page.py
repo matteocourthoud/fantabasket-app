@@ -3,9 +3,9 @@
 import pandas as pd
 
 import streamlit as st
+from src.scraping.scrape_games import scrape_games
 from src.scraping.scrape_injuries import scrape_injuries
 from src.scraping.scrape_lineups import scrape_lineups
-from src.scraping.scrape_games import scrape_games
 from src.scraping.update_fanta_stats import update_fanta_stats
 from src.supabase.utils import load_dataframe_from_supabase
 
