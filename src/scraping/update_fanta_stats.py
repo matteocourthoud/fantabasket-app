@@ -9,6 +9,7 @@ from src.supabase.tables import (
     TABLE_INITIAL_VALUES,
     TABLE_PLAYERS,
     TABLE_STATS,
+    TABLE_TEAMS,
 )
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
@@ -114,14 +115,19 @@ def update_fanta_stats(season: int = None) -> None:
     games_df = load_dataframe_from_supabase(TABLE_GAMES.name, {"season": season})
     initial_values_df = load_dataframe_from_supabase(TABLE_INITIAL_VALUES.name, {"season": season})
     players_df = load_dataframe_from_supabase(TABLE_PLAYERS.name)
+    teams_df = load_dataframe_from_supabase(TABLE_TEAMS.name)
 
-    # Merge stats with game dates
+
+    # Merge stats with game info (date, winner, loser)
     stats_df = pd.merge(
         stats_df,
-        games_df[["game_id", "date"]],
+        games_df[["game_id", "date", "winner", "loser"]],
         on="game_id",
         how="left"
     )
+
+    # Add team column: team = winner if win else loser
+    stats_df["team_short"] = stats_df.apply(lambda row: row["winner"] if row["win"] else row["loser"], axis=1)
 
     # Merge stats with players to get fanta_player_id
     stats_df = pd.merge(
@@ -131,14 +137,22 @@ def update_fanta_stats(season: int = None) -> None:
         how="left"
     )
 
-    # Merge with initial values
+    # Merge stats with teams to get fanta_team
     stats_df = pd.merge(
         stats_df,
-        initial_values_df[["fanta_player_id", "initial_value"]],
-        on="fanta_player_id",
+        teams_df[["team_short", "team", "fanta_team"]],
+        on="team_short",
         how="left"
     )
 
+    # Merge with initial values to get initial_value and position
+    stats_df = pd.merge(
+        stats_df,
+        initial_values_df[["fanta_player_id", "initial_value", "position"]],
+        on="fanta_player_id",
+        how="left"
+    )
+    
     # Compute fanta_score for each game
     print("  Computing fanta scores...")
     stats_df["fanta_score"] = _compute_fanta_score(stats_df)
@@ -150,17 +164,31 @@ def update_fanta_stats(season: int = None) -> None:
     for player in stats_df["player"].unique():
         player_games = stats_df[stats_df["player"] == player].copy()
         initial_value = player_games["initial_value"].iloc[0]
+        
+        # Ensure 'start' is boolean (already present from stats)
         player_fanta_stats = _compute_player_fanta_stats(player_games, initial_value)
+        
+        # Carry over 'start' and 'opponent_team' to the output
         all_fanta_stats.append(player_fanta_stats)
     
     all_fanta_stats = pd.concat(all_fanta_stats, ignore_index=True)
 
     # Add season column
     all_fanta_stats["season"] = season
+    
+    # Add opponent_team column
+    all_fanta_stats["opponent_team"] = all_fanta_stats.apply(
+        lambda row: row["loser"] if row["team_short"] == row["winner"] else row["winner"], axis=1
+    )
+
+    # Drop players with missing position
+    all_fanta_stats = all_fanta_stats.dropna(subset=["position"])
 
     # Select final columns
     final_cols = [
-        "game_id", "player", "fanta_score", "value_before", "gain", "value_after", "season"
+        "game_id", "player", "team", "fanta_team", "position", "fanta_score",
+        "value_before", "gain", "value_after", "mp", "pts", "trb", "ast", "stl", "blk",
+        "start", "opponent_team", "season",
     ]
     all_fanta_stats = all_fanta_stats[final_cols]
 

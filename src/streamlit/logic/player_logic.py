@@ -44,7 +44,7 @@ def get_player_next_game(
     teams_df: pd.DataFrame = None,
 ) -> dict:
     """
-    Find the next scheduled game for the player's current team. Prints debug info if st_debug is provided.
+    Find the next scheduled game for the player's current team. Prints debug info.
 
     Args:
         player_name: Name of the player
@@ -61,6 +61,7 @@ def get_player_next_game(
     player_stats = stats_df[stats_df["player"] == player_name].copy()
     if player_stats.empty:
         return None
+    
     # Merge with games to get winner/loser
     merged = pd.merge(
         player_stats,
@@ -71,12 +72,14 @@ def get_player_next_game(
     merged = merged.sort_values("date", ascending=False)
     if merged.empty:
         return None
+    
     # Guess team: if win, team = winner, else team = loser
     most_recent = merged.iloc[0]
     if most_recent.get("win", False):
         team = most_recent["winner"]
     else:
         team = most_recent["loser"]
+        
     # Normalize team names (strip, upper)
     team = str(team).strip().upper()
     team_full = team
@@ -91,6 +94,7 @@ def get_player_next_game(
     calendar_df["team_home"] = calendar_df["team_home"].str.strip().str.upper()
     calendar_df["team_visitor"] = calendar_df["team_visitor"].str.strip().str.upper()
     team_full = team_full.strip().upper()
+    
     # Find next game for this team in calendar after today
     future_games = calendar_df[(calendar_df["date"] > today) & ((calendar_df["team_home"] == team_full) | (calendar_df["team_visitor"] == team_full))]
     if future_games.empty:

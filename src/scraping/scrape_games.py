@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from src.scraping.utils import get_current_season, clean_player_name
+from src.scraping.utils import clean_player_name, get_current_season
 from src.supabase.tables import TABLE_CALENDAR, TABLE_GAMES, TABLE_STATS
 from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
@@ -20,17 +20,29 @@ WEBSITE_URL = "https://www.basketball-reference.com"
 
 def _get_unscraped_dates(df_calendar: pd.DataFrame, df_games: pd.DataFrame) -> list[str]:
     """Generates a list of unscraped dates based on calendar and games tables."""
-    all_dates = df_calendar["date"].values
-    latest_date = datetime.date.today()
-    all_dates = set([d for d in all_dates if datetime.datetime.strptime(d, "%Y-%m-%d").date() < latest_date])
-
-    if df_games.empty:
-        return sorted(list(all_dates))
+    
+    # Get all dates from calendar before today
+    df_all_dates = df_calendar.groupby("date").size().reset_index(name="games")
+    df_all_dates = df_all_dates[df_all_dates["date"] < str(datetime.date.today())]
 
     # Get dates that already have games scraped
-    scraped_dates = set(df_games["date"].values)
-    unscraped_dates = sorted(list(all_dates - scraped_dates))
-    return unscraped_dates
+    df_scraped_dates = (
+        df_games.groupby("date")
+        .agg(scraped_games=("game_id", "nunique"))
+        .reset_index()
+    )
+
+    # Join all dates with scraped dates
+    df_joined = pd.merge(
+        df_all_dates,
+        df_scraped_dates,
+        on="date",
+        how="left",
+    ).fillna(0)
+
+    # Identify unscraped dates
+    df_unscraped = df_joined[df_joined["games"] > df_joined["scraped_games"]]
+    return df_unscraped["date"].values
 
 
 def _get_game_id(game_element) -> str:
@@ -126,7 +138,8 @@ def _clean_stats_dataframe(df_stats: pd.DataFrame) -> pd.DataFrame:
     df_stats = df_stats.drop(columns=[col for col in pct_cols if col in df_stats.columns], errors="ignore")
 
     # Convert integer columns
-    int_cols = ["mp", "fg", "fga", "tp", "tpa", "ft", "fta", "orb", "drb", "trb", "ast", "stl", "blk", "tov", "pf", "pts", "pm"]
+    int_cols = ["mp", "fg", "fga", "tp", "tpa", "ft", "fta", "orb", "drb", "trb",
+                "ast", "stl", "blk", "tov", "pf", "pts", "pm"]
     for col in int_cols:
         df_stats[col] = pd.to_numeric(df_stats[col], errors="coerce").fillna(0).astype(int)
     

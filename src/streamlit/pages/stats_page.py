@@ -1,26 +1,21 @@
 """Stats page UI - displays player statistics with filters."""
 
-import streamlit as st
 import pandas as pd
-from src.scraping.utils import get_current_season
+
+import streamlit as st
 from src.streamlit.logic import stats_logic
 from src.supabase.utils import get_table_last_updated
 
 
 def main():
     """Stats page of the Streamlit application."""
-    season = get_current_season()
 
     # Load all data
-    data = stats_logic.load_all_data(season)
-
-    # Merge player data
-    stats_df = stats_logic.merge_player_data(
-        data["stats"], data["players"], data["initial_values"]
-    )
+    data = stats_logic.load_fanta_stats_data()
+    fanta_stats = data["fanta_stats"]
 
     # Get team list for filter
-    all_teams = stats_logic.get_team_list(data["games"])
+    all_teams = stats_logic.get_team_list(fanta_stats)
 
     # Page title
     st.set_page_config(layout="wide")
@@ -32,12 +27,12 @@ def main():
     with col1:
         aggregation_method = st.selectbox(
             "Aggregation:",
-            ["Average", "Sum", "Median"],
+            ["mean", "sum", "median"],
             index=0,
         )
 
     with col2:
-        all_positions = sorted(stats_df["position"].dropna().unique())
+        all_positions = sorted(fanta_stats["position"].dropna().unique())
         position_options = ["All"] + list(all_positions)
         selected_position = st.selectbox("Select Position:", position_options)
 
@@ -46,24 +41,17 @@ def main():
         selected_team = st.selectbox("Select Team:", team_options)
 
     with col4:
-        # Get min and max values
-        min_value = 4.0
-        max_value = 30.0
-
         value_range = st.slider(
             "Value Range:",
-            min_value=min_value,
-            max_value=max_value,
-            value=(min_value, max_value),
-            step=0.5,
+            min_value=4.0,
+            max_value=30.0,
+            value=(4.0, 30.0),
+            step=1.0,
         )
 
     # Process and filter player stats
     df_stats = stats_logic.process_player_stats(
-        stats_df=stats_df,
-        games_df=data["games"],
-        fanta_stats_df=data["fanta_stats"],
-        teams_df=data["teams"],
+        fanta_stats_df=fanta_stats,
         position_filter=selected_position,
         team_filter=selected_team,
         value_range=value_range,
@@ -97,7 +85,6 @@ def main():
     text = f"Table last updated: {last_updated.strftime('%Y-%m-%d %H:%M')} UTC"
     st.markdown(f'<p style="font-size:12px;">{text}</p>', unsafe_allow_html=True)
 
-
     # Build a numeric list of recent gains (most recent 5) per player
     def _recent_n_padded(scores: list[float], n: int = 5) -> list[float]:
         """Return the most recent n scores, right-padded with zeros if needed."""
@@ -111,7 +98,11 @@ def main():
         lambda p: _recent_n_padded(score_map.get(p, []), n=5)
     )
 
-     # Reduce to only the requested columns (include player) and prepare formatting
+    # Add a clickable link for each player using LinkColumn
+    from urllib.parse import quote
+    df_stats["player"] = df_stats["player"].apply(lambda name: f"/player?name={quote(name)}")
+
+    # Reduce to only the requested columns (player, ...)
     display_cols = ["player", "value", "gain", "trend", "mp", "pts", "trb", "ast", "stl", "blk", "team", "position"]
     df_stats = df_stats[display_cols]
 
@@ -126,7 +117,7 @@ def main():
         "stl": "{:.1f}",
         "blk": "{:.1f}",
     })
-
+    
     # Color gain: green if positive, red if negative, muted otherwise
     def _gain_style(v):
         try:
@@ -142,16 +133,21 @@ def main():
 
     styler = styler.applymap(_gain_style, subset=["gain"])
 
-    # Configure columns: pin player and render gain_hist as bar chart
-    col_config = {"player": st.column_config.Column(pinned=True)}
-    col_config["trend"] = st.column_config.BarChartColumn(width="small", color="grey")
+    # Configure columns: use LinkColumn for player, pin player, and render gain_hist as bar chart
+    col_config = {
+        "player": st.column_config.LinkColumn(
+            display_text=r"name=(.*?)$"
+        ),
+        "trend": st.column_config.BarChartColumn(width="small", color="grey"),
+    }
 
-    # Display the styled dataframe with Streamlit native renderer
+    # Display the dataframe with clickable player links
     st.dataframe(
         styler,
         width="stretch",
         hide_index=True,
         column_config=col_config,
+        use_container_width=True,
     )
 
 
