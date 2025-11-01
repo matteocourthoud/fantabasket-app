@@ -29,7 +29,6 @@ home_page_obj = st.Page(
     icon=":material/home:",
     url_path="home"
 )
-
 stats_page_obj = st.Page(
     stats_page.main,
     title="Players",
