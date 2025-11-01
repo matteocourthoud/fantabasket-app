@@ -2,8 +2,10 @@
 
 import os
 import sys
+from urllib.parse import quote
 
 import streamlit as st
+
 from src.supabase.tables import TABLE_PLAYERS
 from src.supabase.utils import load_dataframe_from_supabase
 
@@ -13,15 +15,13 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
 
+from logic import injuries_logic, stats_logic
 from utils import image_to_data_uri
 
 
 def main():
     """Home page of the Streamlit application."""
-    from urllib.parse import quote
-
-    from src.streamlit.logic import injuries_logic, stats_logic
-
+    
     # Hero section with centered styling
     st.title("Fantabasket Stats")
     st.write("Your NBA Fantasy Basketball Analytics Hub")

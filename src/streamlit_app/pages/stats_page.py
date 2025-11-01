@@ -4,6 +4,7 @@ import os
 import sys
 
 import streamlit as st
+
 from src.supabase.utils import get_table_last_updated
 
 

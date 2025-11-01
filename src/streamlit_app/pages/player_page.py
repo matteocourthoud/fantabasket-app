@@ -5,6 +5,7 @@ import os
 import sys
 
 import streamlit as st
+
 from src.scraping.utils import get_current_season
 
 

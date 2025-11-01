@@ -1,8 +1,8 @@
 """Updates page UI - shows last update times and allows manual updates."""
 
 import pandas as pd
-
 import streamlit as st
+
 from src.scraping.scrape_games import scrape_games
 from src.scraping.scrape_injuries import scrape_injuries
 from src.scraping.scrape_lineups import scrape_lineups

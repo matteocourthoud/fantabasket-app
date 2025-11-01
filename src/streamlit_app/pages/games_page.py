@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 
 import streamlit as st
+
 from src.supabase.tables import (
     TABLE_CALENDAR,
     TABLE_FANTA_STATS,
@@ -13,14 +14,6 @@ from src.supabase.tables import (
     TABLE_PREDICTIONS,
 )
 from src.supabase.utils import load_dataframe_from_supabase
-
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from utils import color_gain
 
 
 # Add the project root to the Python path
