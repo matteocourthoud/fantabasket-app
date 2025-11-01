@@ -1,22 +1,13 @@
 """Home page of the Streamlit application."""
 
-import os
-import sys
 from urllib.parse import quote
 
 import streamlit as st
 
+from src.streamlit_app.logic import injuries_logic, stats_logic
+from src.streamlit_app.utils import image_to_data_uri
 from src.supabase.tables import TABLE_PLAYERS
 from src.supabase.utils import load_dataframe_from_supabase
-
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from logic import injuries_logic, stats_logic
-from utils import image_to_data_uri
 
 
 def main():

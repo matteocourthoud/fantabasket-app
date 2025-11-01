@@ -1,17 +1,8 @@
 """Main entry point for the Streamlit application."""
 
-import os
-import sys
-
 import streamlit as st
 
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from pages import (
+from src.streamlit_app.pages import (
     games_page,
     home_page,
     injuries_page,

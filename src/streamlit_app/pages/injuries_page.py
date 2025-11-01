@@ -1,19 +1,9 @@
 """Injuries page UI - displays injured players information."""
 
-import os
-import sys
-
 import streamlit as st
 
+from src.streamlit_app.logic import injuries_logic
 from src.supabase.utils import get_table_last_updated
-
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from logic import injuries_logic
 
 
 def main():

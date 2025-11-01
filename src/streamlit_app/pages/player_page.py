@@ -2,19 +2,11 @@
 
 import datetime
 import os
-import sys
 
 import streamlit as st
 
 from src.scraping.utils import get_current_season
-
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from logic import player_logic
+from src.streamlit_app.logic import player_logic
 
 
 def main():
