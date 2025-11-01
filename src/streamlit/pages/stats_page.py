@@ -1,9 +1,19 @@
 """Stats page UI - displays player statistics with filters."""
 
+import os
+import sys
+
 import streamlit as st
 from src.streamlit.logic import stats_logic
-from src.streamlit.utils import color_gain
 from src.supabase.utils import get_table_last_updated
+
+
+# Add the project root to the Python path
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+)
+
+from utils import color_gain
 
 
 def main():
