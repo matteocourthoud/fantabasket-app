@@ -4,6 +4,7 @@ import os
 import sys
 
 import streamlit as st
+from src.supabase.utils import get_table_last_updated
 
 
 # Add the project root to the Python path
@@ -12,8 +13,6 @@ sys.path.append(
 )
 
 from logic import injuries_logic
-
-from src.supabase.utils import get_table_last_updated
 
 
 def main():

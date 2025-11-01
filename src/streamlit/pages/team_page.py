@@ -1,10 +1,19 @@
 """Team page UI - shows average opponent gain and average gain allowed by role for each team."""
 
+import os
+import sys
 from urllib.parse import quote
 
 import streamlit as st
-from src.streamlit.logic import stats_logic, teams_logic
-from src.streamlit.utils import color_gain
+
+
+# Add the project root to the Python path
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+)
+
+from logic import stats_logic, teams_logic
+from utils import color_gain
 
 
 def main():

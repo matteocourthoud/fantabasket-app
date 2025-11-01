@@ -23,6 +23,14 @@ sys.path.append(
 from utils import color_gain
 
 
+# Add the project root to the Python path
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+)
+
+from utils import color_gain
+
+
 def main():
     from urllib.parse import quote
     

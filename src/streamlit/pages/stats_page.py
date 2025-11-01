@@ -4,7 +4,6 @@ import os
 import sys
 
 import streamlit as st
-from src.streamlit.logic import stats_logic
 from src.supabase.utils import get_table_last_updated
 
 
@@ -13,6 +12,7 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
 
+from logic import stats_logic
 from utils import color_gain
 
 

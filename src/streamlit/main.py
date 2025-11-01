@@ -3,12 +3,13 @@
 import os
 import sys
 
+import streamlit as st
+
 
 # Add the project root to the Python path
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
-
 
 from pages import (
     games_page,
@@ -20,8 +21,6 @@ from pages import (
     teams_page,
     updates_page,
 )
-
-import streamlit as st
 
 
 # Configure the page

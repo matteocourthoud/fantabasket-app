@@ -1,10 +1,19 @@
 """Teams page UI - displays average gain of opponents for each team."""
 
+import os
+import sys
 from urllib.parse import quote
 
 import streamlit as st
-from src.streamlit.logic.teams_logic import get_teams_gain_table
-from src.streamlit.utils import get_image_data_uri
+
+
+# Add the project root to the Python path
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+)
+
+from logic.teams_logic import get_teams_gain_table
+from utils import get_image_data_uri
 
 
 def main():

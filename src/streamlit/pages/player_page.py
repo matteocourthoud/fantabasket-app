@@ -5,6 +5,7 @@ import os
 import sys
 
 import streamlit as st
+from src.scraping.utils import get_current_season
 
 
 # Add the project root to the Python path
@@ -12,8 +13,7 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
 
-from src.scraping.utils import get_current_season
-from src.streamlit.logic import player_logic
+from logic import player_logic
 
 
 def main():
