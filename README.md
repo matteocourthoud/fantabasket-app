@@ -50,10 +50,11 @@ make run-app
 ## Project Structure
 
 ```
+data/                 # Raw and processed data
 src/
-├── scraping/          # Web scraping scripts
+├── scraping/         # Web scraping scripts
 ├── stats/            # Statistics computation
-├── streamlit/        # Streamlit dashboard
+├── streamlit_app/    # Streamlit dashboard
 └── supabase/         # Database utilities
 ```
 
