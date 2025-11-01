@@ -39,4 +39,4 @@ scrape: install-deps
 run: install-deps
 	@echo "Launching Streamlit application..."
 	# Call python from the venv directly
-	$(VENV_PYTHON) -m streamlit run src/streamlit/main.py
+	$(VENV_PYTHON) -m streamlit run src/streamlit_app/main.py
