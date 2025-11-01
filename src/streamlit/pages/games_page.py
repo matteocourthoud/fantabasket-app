@@ -95,15 +95,13 @@ def main():
                     odds = game_odds.iloc[0]
                     home_prob = odds["team_home_win_probability"]
                     away_prob = 1 - home_prob
-                    total = odds["total_points"]
                     expander_label = (
-                        f"{game['team_home']} ({home_prob:.0%}) -- "
-                        f"{game['team_visitor']} ({away_prob:.0%}) "
-                        f"[Points: {total:.0f}]"
+                        f"{game['team_home']} ({home_prob:.0%})\n\n"
+                        f"{game['team_visitor']} ({away_prob:.0%})\n\n"
                     )
                 else:
                     expander_label = (
-                        f"{game['team_home']} -- {game['team_visitor']}"
+                        f"{game['team_home']} \n\n{game['team_visitor']}"
                     )
                 
                 with st.expander(expander_label):

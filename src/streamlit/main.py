@@ -84,12 +84,12 @@ games_page_obj = st.Page(
 
 # Sidebar
 st.logo("icon.png")
-#st.sidebar.page_link(home_page_obj, label='Home')
-#st.sidebar.page_link(games_page_obj, label='Games')
-#st.sidebar.page_link(stats_page_obj, label='Players')
-#st.sidebar.page_link(teams_page_obj, label='Teams')
-#st.sidebar.page_link(injuries_page_obj, label='Injuries')
-#st.sidebar.page_link(updates_page_obj, label='Updates')
+st.sidebar.page_link(home_page_obj, label='Home')
+st.sidebar.page_link(games_page_obj, label='Games')
+st.sidebar.page_link(stats_page_obj, label='Players')
+st.sidebar.page_link(teams_page_obj, label='Teams')
+st.sidebar.page_link(injuries_page_obj, label='Injuries')
+st.sidebar.page_link(updates_page_obj, label='Updates')
 
 
 # Define pages with icons
@@ -103,7 +103,8 @@ pg = st.navigation(
         teams_page_obj,
         injuries_page_obj,
         updates_page_obj,
-    ]
+    ],
+    position="hidden",
 )
 
 
