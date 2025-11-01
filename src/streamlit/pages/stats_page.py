@@ -1,9 +1,8 @@
 """Stats page UI - displays player statistics with filters."""
 
-import pandas as pd
-
 import streamlit as st
 from src.streamlit.logic import stats_logic
+from src.streamlit.utils import color_gain
 from src.supabase.utils import get_table_last_updated
 
 
@@ -13,6 +12,7 @@ def main():
     # Load all data
     data = stats_logic.load_fanta_stats_data()
     fanta_stats = data["fanta_stats"]
+    predictions = data["predictions"]
 
     # Get team list for filter
     all_teams = stats_logic.get_team_list(fanta_stats)
@@ -54,6 +54,7 @@ def main():
     # Process and filter player stats
     df_stats = stats_logic.process_player_stats(
         fanta_stats_df=fanta_stats,
+        predictions_df=predictions,
         position_filter=selected_position,
         team_filter=selected_team,
         value_range=value_range,
@@ -102,45 +103,50 @@ def main():
 
     # Add a clickable link for each player using LinkColumn
     from urllib.parse import quote
-    df_stats["player"] = df_stats["player"].apply(lambda name: f"/player?name={quote(name)}")
+
+    df_stats["player"] = df_stats["player"].apply(
+        lambda name: f"/player?name={quote(name)}"
+    )
 
     # Reduce to only the requested columns (player, ...)
-    display_cols = ["player", "value", "score", "gain", "trend", "mp", "pts", "trb", "ast", "stl", "blk", "team", "position"]
+    display_cols = [
+        "player",
+        "value",
+        "score",
+        "gain_hat",
+        "trend",
+        "mp",
+        "pts",
+        "trb",
+        "ast",
+        "stl",
+        "blk",
+        "team",
+        "position",
+    ]
     df_stats = df_stats[display_cols]
 
-    # Create a pandas Styler to format numbers and color the gain column
-    styler = df_stats.style.format({
-        "value": "{:.1f}",
-        "score": "{:.1f}",
-        "gain": "{:.1f}",
-        "mp": "{:.1f}",
-        "pts": "{:.1f}",
-        "trb": "{:.1f}",
-        "ast": "{:.1f}",
-        "stl": "{:.1f}",
-        "blk": "{:.1f}",
-    })
-    
-    # Color gain: green if positive, red if negative, muted otherwise
-    def _gain_style(v):
-        try:
-            if pd.isna(v):
-                return ""
-            if v > 0:
-                return "color: #28a745; font-weight: 600"
-            if v < 0:
-                return "color: #dc3545; font-weight: 600"
-            return "font-weight: 600"
-        except Exception:
-            return ""
+    # Create a pandas Styler to format numbers and color gain column
+    styler = df_stats.style.format(
+        {
+            "value": "{:.1f}",
+            "score": "{:.1f}",
+            "gain_hat": "{:.2f}",
+            "mp": "{:.1f}",
+            "pts": "{:.1f}",
+            "trb": "{:.1f}",
+            "ast": "{:.1f}",
+            "stl": "{:.1f}",
+            "blk": "{:.1f}",
+        }
+    )
 
-    styler = styler.applymap(_gain_style, subset=["gain"])
+    # Apply color styling to gain column using shared utility function
+    styler = styler.map(color_gain, subset=["gain_hat"])
 
-    # Configure columns: use LinkColumn for player, pin player, and render gain_hist as bar chart
+    # Configure columns: LinkColumn for player, BarChart for trend
     col_config = {
-        "player": st.column_config.LinkColumn(
-            display_text=r"name=(.*?)$"
-        ),
+        "player": st.column_config.LinkColumn(display_text=r"name=(.*?)$"),
         "trend": st.column_config.BarChartColumn(width="small", color="grey"),
     }
 

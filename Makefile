@@ -30,8 +30,11 @@ install-deps: create-venv
 scrape: install-deps
 	@echo "Running data scraping scripts..."
 	# Call python from the venv directly
-	$(VENV_PYTHON) -m src/scraping/scrape_injuries
-	$(VENV_PYTHON) -m src/scraping/scrape_games
+	#$(VENV_PYTHON) -m src.scraping.scrape_injuries
+	#$(VENV_PYTHON) -m src.scraping.scrape_lineups
+	$(VENV_PYTHON) -m src.scraping.scrape_games
+	$(VENV_PYTHON) -m src.scraping.update_fanta_stats
+	$(VENV_PYTHON) -m src.stats.predict_gain
 
 run: install-deps
 	@echo "Launching Streamlit application..."

@@ -1,5 +1,6 @@
 """Players page UI - individual player statistics and performance."""
 
+import datetime
 import os
 import sys
 
@@ -17,7 +18,15 @@ from src.streamlit.logic import player_logic
 
 def main():
     """Players page of the Streamlit application."""
-    import datetime
+    # Add CSS to prevent metrics from stacking on mobile
+    st.markdown("""
+        <style>
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) .stColumn {
+            min-width: 0 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     season = get_current_season()
 
     # Load all data
@@ -30,8 +39,21 @@ def main():
         st.error("No player specified in URL.")
         return
 
-    # Page title
-    st.title(selected_player)
+    # Display player image if available
+    project_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..")
+    )
+    player_code = data["players"].loc[
+        data["players"]["player"] == selected_player, "player_id"
+    ].values[0]
+    image_path = os.path.join(project_root, "data", "players", f"{player_code}.jpg")
+        
+    # Title and image
+    title_col, image_col = st.columns([8, 1], width="stretch")
+    with title_col:
+        st.title(selected_player)
+    with image_col:
+        st.image(image_path, width=80)
     
     # Get next game info
     next_game = player_logic.get_player_next_game(
@@ -73,7 +95,7 @@ def main():
         median_gain = player_fanta["gain"].median()
     
     # Metrics display
-    col1, col2, col3 = st.columns(3, width=300)
+    col1, col2, col3 = st.columns(3, width="stretch")
     col1.metric(
         "Current Value",
         f"{summary['current_value']:.1f}" if summary['current_value'] is not None else "-",
@@ -112,7 +134,7 @@ def main():
             return ""
 
     styler = recent_games.style.format({"gain": "{:.1f}"})
-    styler = styler.applymap(_gain_style, subset=["gain"])
+    styler = styler.map(_gain_style, subset=["gain"])
     st.dataframe(styler, width="stretch", hide_index=True)
 
     # Player news box (auto-fetched, read-only)

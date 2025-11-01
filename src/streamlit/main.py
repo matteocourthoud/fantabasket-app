@@ -1,14 +1,14 @@
 """Main entry point for the Streamlit application."""
 
-
 from pages import (
+    games_page,
+    home_page,
     injuries_page,
     player_page,
     stats_page,
     team_page,
     teams_page,
     updates_page,
-    games_page,
 )
 
 import streamlit as st
@@ -23,11 +23,18 @@ st.set_page_config(
 )
 
 # Get other pages
+home_page_obj = st.Page(
+    home_page.main,
+    title="Home",
+    icon=":material/home:",
+    url_path="home"
+)
+
 stats_page_obj = st.Page(
     stats_page.main,
-    title="Stats",
+    title="Players",
     icon=":material/bar_chart:",
-    url_path="stats",
+    url_path="players",
 )
 player_page_obj = st.Page(
     player_page.main,
@@ -67,39 +74,24 @@ games_page_obj = st.Page(
 )
 
 
-
-def home():
-    """Home page of the Streamlit application."""
-    st.logo("icon.png")
-    st.title("Fantabasket Dashboard")
-
-    # Welcome message
-    st.markdown("Welcome to the Fantabasket Dashboard!")
-
-    # Navigation buttons
-    if st.button("Stats", icon=":material/bar_chart:", width=300):
-        st.switch_page(stats_page_obj)
-    if st.button("Players", icon=":material/person:", width=300):
-        st.switch_page(player_page_obj)
-    if st.button("Games", icon=":material/sports_basketball:", width=300):
-        st.switch_page(games_page_obj)
-    if st.button("Teams", icon=":material/people:", width=300):
-        st.switch_page(teams_page_obj)
-    if st.button("Injuries", icon=":material/healing:", width=300):
-        st.switch_page(injuries_page_obj)
-    if st.button("Updates", icon=":material/refresh:", width=300):
-        st.switch_page(updates_page_obj)
+# Sidebar
+st.logo("icon.png")
+st.sidebar.page_link(home_page_obj, label='Home')
+st.sidebar.page_link(games_page_obj, label='Games')
+st.sidebar.page_link(stats_page_obj, label='Players')
+st.sidebar.page_link(teams_page_obj, label='Teams')
+st.sidebar.page_link(injuries_page_obj, label='Injuries')
+st.sidebar.page_link(updates_page_obj, label='Updates')
 
 
 # Define pages with icons
-
 pg = st.navigation(
     [
-        st.Page(home, title="Home", icon=":material/home:", url_path="home"),
+        home_page_obj,
         stats_page_obj,
         player_page_obj,
         games_page_obj,
-        team_page_obj,  # Registered for routing, not shown in nav
+        team_page_obj,
         teams_page_obj,
         injuries_page_obj,
         updates_page_obj,

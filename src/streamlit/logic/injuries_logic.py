@@ -45,7 +45,7 @@ def parse_status(status: str, calendar_df: pd.DataFrame) -> pd.Timestamp | None:
         # If the date has already passed this year, assume it's next year
         if date < datetime.datetime.today() - datetime.timedelta(days=1):
             date = date.replace(year=current_year + 1)
-        return date.date()
+        return pd.Timestamp(date)
     
     elif "Out for the season" in status:
         # Use the last date of the season
@@ -63,12 +63,18 @@ def load_injuries_data() -> pd.DataFrame:
     
     # Add return date
     df_calendar = load_dataframe_from_supabase(table_name=TABLE_CALENDAR.name)
-    df_injuries["return_date"] = df_injuries["status"].apply(parse_status, calendar_df=df_calendar)
+    df_injuries["return_date"] = df_injuries["status"].apply(
+        parse_status, calendar_df=df_calendar
+    )
     
     # Add days until return
     today = pd.Timestamp(datetime.date.today())
     df_injuries["days_until_return"] = df_injuries["return_date"].apply(
-        lambda return_date: (pd.Timestamp(return_date) - today).days if pd.notnull(return_date) else None
+        lambda return_date: (
+            (return_date - today).days
+            if pd.notnull(return_date)
+            else None
+        )
     )
     
     return df_injuries

@@ -72,14 +72,14 @@ TABLE_STATS = Table(
     ],
 )
 
-TABLE_GAMES = Table(
-    name="games",
+TABLE_GAME_RESULTS = Table(
+    name="game_results",
     columns=[
         Column("game_id", "text", is_primary=True, is_unique=True),
         Column("season", "integer"),
         Column("date", "text"),
-        Column("winner", "text"),
-        Column("loser", "text"),
+        Column("team_winner", "text"),
+        Column("team_loser", "text"),
         Column("pts_winner", "integer"),
         Column("pts_loser", "integer"),
     ],
@@ -183,6 +183,26 @@ TABLE_UPDATES = Table(
     ],
 )
 
+TABLE_PREDICTIONS = Table(
+    name="predictions",
+    columns=[
+        Column("player", "text", is_primary=True, is_unique=True),
+        Column("predicted_score", "float"),
+        Column("predicted_gain", "float"),
+    ],
+)
+
+TABLE_GAME_ODDS = Table(
+    name="game_odds",
+    columns=[
+        Column("date", "text", is_primary=True),
+        Column("team_home", "text", is_primary=True),
+        Column("team_visitor", "text"),
+        Column("team_home_win_probability", "float"),
+        Column("total_points", "float"),
+    ],
+)
+
 
 # ============================================================================
 # TABLE REGISTRY
@@ -190,7 +210,7 @@ TABLE_UPDATES = Table(
 
 ALL_TABLES = [
     TABLE_STATS,
-    TABLE_GAMES,
+    TABLE_GAME_RESULTS,
     TABLE_CALENDAR,
     TABLE_INITIAL_VALUES,
     TABLE_FANTA_STATS,
@@ -200,6 +220,8 @@ ALL_TABLES = [
     TABLE_INJURIES,
     TABLE_PLAYER_NEWS,
     TABLE_UPDATES,
+    TABLE_PREDICTIONS,
+    TABLE_GAME_ODDS,
 ]
 
 TABLES_BY_NAME = {table.name: table for table in ALL_TABLES}

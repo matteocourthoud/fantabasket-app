@@ -8,11 +8,19 @@ from src.supabase.utils import load_dataframe_from_supabase
 
 
 def load_fanta_stats_data() -> dict[str, pd.DataFrame]:
-    """Load only fanta_stats for the stats page."""
+    """Load fanta_stats and predictions for the stats page."""
+    from src.supabase.tables import TABLE_PREDICTIONS
+
     season = get_current_season()
-    
+
+    fanta_stats = load_dataframe_from_supabase(
+        TABLE_FANTA_STATS.name, filters={"season": season}
+    )
+    predictions = load_dataframe_from_supabase(TABLE_PREDICTIONS.name)
+
     return {
-        "fanta_stats": load_dataframe_from_supabase(TABLE_FANTA_STATS.name, filters={"season": season})
+        "fanta_stats": fanta_stats,
+        "predictions": predictions,
     }
 
 
@@ -38,16 +46,20 @@ def calculate_player_aggregates(
         df.groupby(["player", "fanta_team", "position"])
         .agg({**{col: aggregation_method for col in numeric_cols},
               "game_id": "count",
-              #"value_after": "last",
         })
         .reset_index()
     )
-    player_avg_stats = player_avg_stats.rename(columns={
+    
+    # Rename columns - only rename if they exist
+    rename_map = {
         "game_id": "games",
         "value_after": "value",
-        "fanta_team": "team",
         "fanta_score": "score",
-        })
+    }
+    if "fanta_team" in player_avg_stats.columns:
+        rename_map["fanta_team"] = "team"
+    
+    player_avg_stats = player_avg_stats.rename(columns=rename_map)
     player_avg_stats["games"] = player_avg_stats["games"].astype(int)
     return player_avg_stats
 
@@ -59,9 +71,13 @@ def apply_filters(
 ) -> pd.DataFrame:
     """Apply team and value range filters to dataframe."""
     
-    # Filter by team if specified
+    # Filter by team if specified (expects fanta_team code like 'BOS', 'LAL')
     if team and team != "All":
-        df = df[df["fanta_team"] == team]
+        # Try both 'team' and 'fanta_team' columns
+        if "team" in df.columns:
+            df = df[df["team"] == team]
+        elif "fanta_team" in df.columns:
+            df = df[df["fanta_team"] == team]
 
     # Filter by value range if specified
     if value_range:
@@ -72,22 +88,34 @@ def apply_filters(
 
 def process_player_stats(
     fanta_stats_df: pd.DataFrame,
+    predictions_df: pd.DataFrame,
     position_filter: str | None = None,
     team_filter: str | None = None,
     value_range: tuple[float, float] | None = None,
     aggregation_method: str = "mean",
 ) -> pd.DataFrame:
-    """Complete processing pipeline for player statistics using only fanta_stats."""
+    """Complete processing pipeline for player statistics."""
     
     # Calculate averages
     player_stats = calculate_player_aggregates(
         fanta_stats_df, position_filter, aggregation_method
     )
 
+    # Merge with predictions to get predicted_gain
+    player_stats = pd.merge(
+        player_stats,
+        predictions_df[["player", "predicted_gain"]],
+        on="player",
+        how="left",
+    )
+    # Rename predicted_gain to gain
+    player_stats = player_stats.rename(columns={"predicted_gain": "gain_hat"})
+
+
     # Apply filters
     player_stats = apply_filters(player_stats, team_filter, value_range)
 
-    # Sort by value (descending)
-    player_stats = player_stats.sort_values("value", ascending=False)
+    # Sort by gain (descending)
+    player_stats = player_stats.sort_values("gain_hat", ascending=False)
 
     return player_stats

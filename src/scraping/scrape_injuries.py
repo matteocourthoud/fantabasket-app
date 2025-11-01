@@ -35,7 +35,7 @@ def _clean_df_injuries(df_injuries: pd.DataFrame) -> pd.DataFrame:
     return df_injuries
 
 
-def scrape_injuries() -> None:
+def scrape_injuries() -> int:
     """Scrapes NBA injured players and saves to Supabase."""
     print("Scraping injuries...")
 
@@ -54,7 +54,9 @@ def scrape_injuries() -> None:
         replace=True,
     )
 
-    print(f"✓ Scraped {len(df_injuries)} injuries and saved to Supabase")
+    count = len(df_injuries)
+    print(f"✓ Scraped {count} injuries and saved to Supabase")
+    return count
 
 
 if __name__ == "__main__":

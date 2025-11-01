@@ -5,7 +5,7 @@ import pandas as pd
 from src.scraping.utils import get_current_season
 from src.supabase.tables import (
     TABLE_FANTA_STATS,
-    TABLE_GAMES,
+    TABLE_GAME_RESULTS,
     TABLE_INITIAL_VALUES,
     TABLE_PLAYERS,
     TABLE_STATS,
@@ -112,22 +112,27 @@ def update_fanta_stats(season: int = None) -> None:
 
     # Load required data from Supabase
     stats_df = load_dataframe_from_supabase(TABLE_STATS.name, {"season": season})
-    games_df = load_dataframe_from_supabase(TABLE_GAMES.name, {"season": season})
-    initial_values_df = load_dataframe_from_supabase(TABLE_INITIAL_VALUES.name, {"season": season})
+    games_df = load_dataframe_from_supabase(TABLE_GAME_RESULTS.name, {"season": season})
+    initial_values_df = load_dataframe_from_supabase(
+        TABLE_INITIAL_VALUES.name, {"season": season}
+    )
     players_df = load_dataframe_from_supabase(TABLE_PLAYERS.name)
     teams_df = load_dataframe_from_supabase(TABLE_TEAMS.name)
 
 
-    # Merge stats with game info (date, winner, loser)
+    # Merge stats with game info (date, team_winner, team_loser)
     stats_df = pd.merge(
         stats_df,
-        games_df[["game_id", "date", "winner", "loser"]],
+        games_df[["game_id", "date", "team_winner", "team_loser"]],
         on="game_id",
         how="left"
     )
 
-    # Add team column: team = winner if win else loser
-    stats_df["team_short"] = stats_df.apply(lambda row: row["winner"] if row["win"] else row["loser"], axis=1)
+    # Add team column: team = team_winner if win else team_loser
+    stats_df["team"] = stats_df.apply(
+        lambda row: row["team_winner"] if row["win"] else row["team_loser"],
+        axis=1
+    )
 
     # Merge stats with players to get fanta_player_id
     stats_df = pd.merge(
@@ -140,8 +145,8 @@ def update_fanta_stats(season: int = None) -> None:
     # Merge stats with teams to get fanta_team
     stats_df = pd.merge(
         stats_df,
-        teams_df[["team_short", "team", "fanta_team"]],
-        on="team_short",
+        teams_df[["team", "fanta_team"]],
+        on="team",
         how="left"
     )
 
@@ -178,7 +183,11 @@ def update_fanta_stats(season: int = None) -> None:
     
     # Add opponent_team column
     all_fanta_stats["opponent_team"] = all_fanta_stats.apply(
-        lambda row: row["loser"] if row["team_short"] == row["winner"] else row["winner"], axis=1
+        lambda row: (
+            row["team_loser"] if row["team"] == row["team_winner"]
+            else row["team_winner"]
+        ),
+        axis=1
     )
 
     # Drop players with missing position

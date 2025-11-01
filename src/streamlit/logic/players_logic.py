@@ -13,7 +13,7 @@ sys.path.append(
 
 from src.supabase.tables import (  # noqa: E402
     TABLE_FANTA_STATS,
-    TABLE_GAMES,
+    TABLE_GAME_RESULTS,
     TABLE_PLAYERS,
     TABLE_STATS,
 )
@@ -25,7 +25,7 @@ def load_player_data(season: int) -> dict[str, pd.DataFrame]:
     from src.supabase.tables import TABLE_CALENDAR, TABLE_TEAMS
     data = {
         "stats": load_dataframe_from_supabase(TABLE_STATS.name, filters={"season": season}),
-        "games": load_dataframe_from_supabase(TABLE_GAMES.name, filters={"season": season}),
+        "games": load_dataframe_from_supabase(TABLE_GAME_RESULTS.name, filters={"season": season}),
         "players": load_dataframe_from_supabase(TABLE_PLAYERS.name),
         "fanta_stats": load_dataframe_from_supabase(TABLE_FANTA_STATS.name),
         "calendar": load_dataframe_from_supabase(TABLE_CALENDAR.name, filters={"season": season}),
@@ -64,33 +64,25 @@ def get_player_next_game(
     # Merge with games to get winner/loser
     merged = pd.merge(
         player_stats,
-        games_df[["game_id", "winner", "loser", "date"]],
+        games_df[["game_id", "team_winner", "team_loser", "date"]],
         on="game_id",
         how="left",
     )
     merged = merged.sort_values("date", ascending=False)
     if merged.empty:
         return None
-    # Guess team: if win, team = winner, else team = loser
+    # Guess team: if win, team = team_winner, else team = team_loser
     most_recent = merged.iloc[0]
     if most_recent.get("win", False):
-        team = most_recent["winner"]
+        team = most_recent["team_winner"]
     else:
-        team = most_recent["loser"]
+        team = most_recent["team_loser"]
     # Normalize team names (strip, upper)
-    team = str(team).strip().upper()
-    team_full = team
-    if teams_df is not None:
-        teams_df = teams_df.copy()
-        teams_df["team_short"] = teams_df["team_short"].str.strip().str.upper()
-        teams_df["team"] = teams_df["team"].str.strip().str.upper()
-        match = teams_df[teams_df["team_short"] == team]
-        if not match.empty:
-            team_full = match.iloc[0]["team"]
+    # Team is already in full format from game_results table
+    team_full = str(team).strip().upper()
     calendar_df = calendar_df.copy()
     calendar_df["team_home"] = calendar_df["team_home"].str.strip().str.upper()
     calendar_df["team_visitor"] = calendar_df["team_visitor"].str.strip().str.upper()
-    team_full = team_full.strip().upper()
     # Find next game for this team in calendar after today
     future_games = calendar_df[(calendar_df["date"] > today) & ((calendar_df["team_home"] == team_full) | (calendar_df["team_visitor"] == team_full))]
     if future_games.empty:

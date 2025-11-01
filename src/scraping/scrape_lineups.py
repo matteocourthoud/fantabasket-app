@@ -137,7 +137,7 @@ def _scrape_lineups() -> pd.DataFrame:
     return df_lineups
 
 
-def scrape_lineups() -> None:
+def scrape_lineups() -> int:
     """Scrapes NBA lineups from https://basketballmonster.com/nbalineups."""
     print("Scraping lineups...")
 
@@ -156,7 +156,11 @@ def scrape_lineups() -> None:
         replace=True,
     )
 
+    # Compute number of teams with complete lineups
+    teams_with_lineups = df_lineups["team"].nunique() if not df_lineups.empty else 0
+
     print("✓ Lineups updated.")
+    return teams_with_lineups
 
 
 if __name__ == "__main__":
