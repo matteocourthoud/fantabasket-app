@@ -3,6 +3,6 @@
 .idea
 __pycache__
 .env
-.streamlit/secrets.toml
+.streamlit/
 .ruff_cache/
 .venv/
