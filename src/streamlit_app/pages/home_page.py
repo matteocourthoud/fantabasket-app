@@ -6,8 +6,8 @@ import streamlit as st
 
 from src.streamlit_app.logic import injuries_logic, stats_logic
 from src.streamlit_app.utils import image_to_data_uri
-from src.supabase.tables import TABLE_PLAYERS
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.tables import TABLE_PLAYERS
+from src.database.utils import load_dataframe_from_supabase
 
 
 def main():

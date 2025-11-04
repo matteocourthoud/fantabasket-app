@@ -6,7 +6,7 @@ import statsmodels.formula.api as smf
 
 from src.scraping.update_fanta_stats import _compute_gain
 from src.scraping.utils import get_current_season
-from src.supabase.tables import (
+from src.database.tables import (
     TABLE_CALENDAR,
     TABLE_FANTA_STATS,
     TABLE_GAME_RESULTS,
@@ -14,7 +14,7 @@ from src.supabase.tables import (
     TABLE_LINEUPS,
     TABLE_PREDICTIONS,
 )
-from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
 def _get_season_stats_with_match_info(season: int) -> pd.DataFrame:

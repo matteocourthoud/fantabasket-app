@@ -11,13 +11,13 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.scraping.utils import clean_player_name, get_current_season
-from src.supabase.tables import (
+from src.database.tables import (
     TABLE_CALENDAR,
     TABLE_GAME_RESULTS,
     TABLE_STATS,
     TABLE_TEAMS,
 )
-from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
 WEBSITE_URL = "https://www.basketball-reference.com"

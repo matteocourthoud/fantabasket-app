@@ -11,18 +11,18 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
 
-from src.supabase.tables import (  # noqa: E402
+from src.database.tables import (  # noqa: E402
     TABLE_FANTA_STATS,
     TABLE_GAME_RESULTS,
     TABLE_PLAYERS,
     TABLE_STATS,
 )
-from src.supabase.utils import load_dataframe_from_supabase  # noqa: E402
+from src.database.utils import load_dataframe_from_supabase  # noqa: E402
 
 
 def load_player_data(season: int) -> dict[str, pd.DataFrame]:
     """Load all required data for the players page."""
-    from src.supabase.tables import TABLE_CALENDAR, TABLE_TEAMS
+    from src.database.tables import TABLE_CALENDAR, TABLE_TEAMS
     data = {
         "stats": load_dataframe_from_supabase(TABLE_STATS.name, filters={"season": season}),
         "games": load_dataframe_from_supabase(TABLE_GAME_RESULTS.name, filters={"season": season}),

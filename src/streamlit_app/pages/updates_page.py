@@ -8,7 +8,7 @@ from src.scraping.scrape_injuries import scrape_injuries
 from src.scraping.scrape_lineups import scrape_lineups
 from src.scraping.scrape_odds import save_odds_to_database
 from src.scraping.update_fanta_stats import update_fanta_stats
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.utils import load_dataframe_from_supabase
 
 
 TABLES_TO_UPDATE = ["injuries", "lineups", "stats", "fanta_stats", "game_odds"]

@@ -5,14 +5,14 @@ from datetime import datetime
 import streamlit as st
 
 from src.streamlit_app.utils import color_gain
-from src.supabase.tables import (
+from src.database.tables import (
     TABLE_CALENDAR,
     TABLE_FANTA_STATS,
     TABLE_GAME_ODDS,
     TABLE_LINEUPS,
     TABLE_PREDICTIONS,
 )
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.utils import load_dataframe_from_supabase
 
 
 def main():

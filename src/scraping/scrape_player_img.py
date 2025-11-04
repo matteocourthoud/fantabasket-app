@@ -6,8 +6,8 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-from src.supabase.tables import TABLE_PLAYERS
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.tables import TABLE_PLAYERS
+from src.database.utils import load_dataframe_from_supabase
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../../data/players/")

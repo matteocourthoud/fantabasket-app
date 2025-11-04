@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.supabase.client import get_supabase_client
-from src.supabase.tables import ALL_TABLES, TABLES_BY_NAME
+from src.database.client import get_supabase_client
+from src.database.tables import ALL_TABLES, TABLES_BY_NAME
 
 
 @pytest.fixture(scope="module")

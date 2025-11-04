@@ -3,10 +3,10 @@
 import time
 
 import pandas as pd
-from src.supabase.table_names import TABLE_CALENDAR
+from src.database.table_names import TABLE_CALENDAR
 
 from src.scraping.utils import get_current_season
-from src.supabase.utils import save_dataframe_to_supabase
+from src.database.utils import save_dataframe_to_supabase
 
 
 MONTHS = ["october", "november", "december", "january", "february", "march", "april"]

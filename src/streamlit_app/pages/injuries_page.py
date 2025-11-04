@@ -3,7 +3,7 @@
 import streamlit as st
 
 from src.streamlit_app.logic import injuries_logic
-from src.supabase.utils import get_table_last_updated
+from src.database.utils import get_table_last_updated
 
 
 def main():

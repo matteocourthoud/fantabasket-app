@@ -1,10 +1,13 @@
 """Stats page UI - displays player statistics with filters."""
 
+from urllib.parse import quote
+
 import streamlit as st
 
 from src.streamlit_app.logic import stats_logic
-from src.streamlit_app.utils import color_gain
-from src.supabase.utils import get_table_last_updated
+from src.streamlit_app.utils import color_gain, image_to_data_uri
+from src.database.tables import TABLE_PLAYERS
+from src.database.utils import get_table_last_updated, load_dataframe_from_supabase
 
 
 def main():
@@ -62,32 +65,22 @@ def main():
         aggregation_method=aggregation_method.lower(),
     )
 
-    # compute per-player recent scores from fanta_stats table
-    try:
-        from src.supabase.utils import load_dataframe_from_supabase
-
-        df_fanta = load_dataframe_from_supabase("fanta_stats")
-        if not df_fanta.empty:
-            # group gains by player (sorted by game_id so lists are chronological)
-            score_map = (
-                df_fanta.sort_values("game_id")
-                .groupby("player")
-                ["gain"]
-                .apply(lambda s: s.dropna().tolist())
-                .to_dict()
-            )
-        else:
-            score_map = {}
-    except Exception:
+    # Compute per-player recent scores from fanta_stats table
+    df_fanta = load_dataframe_from_supabase("fanta_stats")
+    if not df_fanta.empty:
+        # group gains by player (sorted by game_id so lists are chronological)
+        score_map = (
+            df_fanta.sort_values("game_id")
+            .groupby("player")
+            ["gain"]
+            .apply(lambda s: s.dropna().tolist())
+            .to_dict()
+        )
+    else:
         score_map = {}
 
     # Add some spacing before the table
     st.markdown("")
-    
-    # Show last update time from the updates table (UTC)
-    last_updated = get_table_last_updated("fanta_stats")
-    text = f"Table last updated: {last_updated.strftime('%Y-%m-%d %H:%M')} UTC"
-    st.markdown(f'<p style="font-size:12px;">{text}</p>', unsafe_allow_html=True)
 
     # Build a numeric list of recent gains (most recent 5) per player
     def _recent_n_padded(scores: list[float], n: int = 5) -> list[float]:
@@ -103,7 +96,12 @@ def main():
     )
 
     # Add a clickable link for each player using LinkColumn
-    from urllib.parse import quote
+    players_df = load_dataframe_from_supabase(TABLE_PLAYERS.name)
+    if not players_df.empty:
+        df_stats = df_stats.merge(
+            players_df[["player", "player_id"]], on="player", how="left"
+        )
+        df_stats["image"] = df_stats["player_id"].apply(image_to_data_uri)
 
     df_stats["player"] = df_stats["player"].apply(
         lambda name: f"/player?name={quote(name)}"
@@ -111,19 +109,20 @@ def main():
 
     # Reduce to only the requested columns (player, ...)
     display_cols = [
+        "image",
         "player",
         "value",
         "score",
         "gain_hat",
         "trend",
-        "mp",
         "pts",
         "trb",
         "ast",
         "stl",
         "blk",
-        "team",
         "position",
+        "team",
+        "mp",
     ]
     df_stats = df_stats[display_cols]
 
@@ -147,6 +146,7 @@ def main():
 
     # Configure columns: LinkColumn for player, BarChart for trend
     col_config = {
+        "image": st.column_config.ImageColumn(label="", width="small"),
         "player": st.column_config.LinkColumn(display_text=r"name=(.*?)$"),
         "trend": st.column_config.BarChartColumn(width="small", color="grey"),
     }
@@ -158,6 +158,11 @@ def main():
         column_config=col_config,
         width="stretch",
     )
+    
+    # Show last update time from the updates table (UTC)
+    last_updated = get_table_last_updated("fanta_stats")
+    text = f"Table last updated: {last_updated.strftime('%Y-%m-%d %H:%M')} UTC"
+    st.markdown(f'<p style="font-size:12px;">{text}</p>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

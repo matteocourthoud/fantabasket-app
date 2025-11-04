@@ -3,7 +3,7 @@
 import pandas as pd
 
 from src.scraping.utils import get_current_season
-from src.supabase.tables import (
+from src.database.tables import (
     TABLE_FANTA_STATS,
     TABLE_GAME_RESULTS,
     TABLE_INITIAL_VALUES,
@@ -11,7 +11,7 @@ from src.supabase.tables import (
     TABLE_STATS,
     TABLE_TEAMS,
 )
-from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
 def _compute_fanta_score(df: pd.DataFrame) -> pd.Series:

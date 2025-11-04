@@ -3,6 +3,7 @@
 import datetime
 import os
 
+import pandas as pd
 import streamlit as st
 
 from src.scraping.utils import get_current_season
@@ -58,13 +59,6 @@ def main():
         teams_df=data["teams"],
     )
     
-    # Get player summary (current value, total gain)
-    summary = player_logic.get_player_summary(
-        selected_player,
-        data["stats"],
-        data["fanta_stats"],
-    )
-    
     # Get next opponent fanta_team
     next_fanta_team = None
     if next_game is not None:
@@ -79,32 +73,30 @@ def main():
             next_fanta_team = opp_nba
     
     # Compute latest gain and median gain
-    latest_gain = None
-    median_gain = None
     fanta_stats = data["fanta_stats"]
     player_fanta = fanta_stats[fanta_stats["player"] == selected_player]
-    if not player_fanta.empty:
-        latest_gain = player_fanta.iloc[-1]["gain"]
-        median_gain = player_fanta["gain"].median()
+    current_value = player_fanta["value_after"].iloc[-1]
+    latest_gain = player_fanta.iloc[-1]["gain"]
+    avg_score = player_fanta["fanta_score"].mean()
+    median_score = player_fanta["fanta_score"].median()
     
     # Metrics display
-    col1, col2, col3 = st.columns(3, width="stretch")
+    col1, col2, col3, col4 = st.columns(4, width="stretch")
+
     col1.metric(
         "Current Value",
-        f"{summary['current_value']:.1f}" if summary['current_value'] is not None else "-",
-        delta=round(latest_gain, 1) if latest_gain is not None else 0.0,
-        label_visibility="visible",
+        round(current_value, 1),
+        delta=round(latest_gain, 1),
     )
     col2.metric(
-        "Total Gain",
-        f"{summary['avg_gain']:.1f}" if summary['avg_gain'] is not None else "-",
-        delta=round(median_gain, 1) if median_gain is not None else 0.0,
-        label_visibility="visible",
+        "Avg Score",
+        round(avg_score, 1),
     )
-    if next_fanta_team:
-        col3.metric("Next Opponent", next_fanta_team)
-    else:
-        col3.metric("Next Opponent", "-")
+    col3.metric(
+        "Median Score",
+        round(median_score, 1),
+    )
+    col4.metric("Next Opponent", next_fanta_team)
 
     # Recent games section
     st.subheader("Recent Games")
@@ -112,9 +104,8 @@ def main():
         selected_player, data["stats"], data["games"], data["fanta_stats"], n_games=100,
     )
     
-    # Style the gain column as in stats_page
+    # Style the gain column as in stats_page and color the opponent cell by win/loss
     def _gain_style(v):
-        import pandas as pd
         try:
             if pd.isna(v):
                 return ""
@@ -126,9 +117,64 @@ def main():
         except Exception:
             return ""
 
-    styler = recent_games.style.format({"gain": "{:.1f}"})
+    def _opponent_row_style(row: pd.Series) -> pd.Series:
+        """Return a Series of CSS styles for a row where only the 'opponent'
+        column is colored depending on the value of the 'win' column.
+        """
+        styles = pd.Series("", index=row.index)
+        if "opponent" in row.index and "win" in row.index:
+            if pd.isna(row["win"]):
+                return styles
+            if row["win"]:
+                styles["opponent"] = "color: #6aa994"
+            else:
+                styles["opponent"] = "color: #b06f6f"
+        return styles
+
+    def _score_style(v):
+        try:
+            if pd.isna(v):
+                return ""
+            return "font-weight: 700"
+        except Exception:
+            return ""
+
+    # Ensure 'start' column visible (move near opponent if present)
+    display_df = recent_games.copy()
+
+    # Prepare Streamlit column_config for percent columns (fg%, 3p%, ast%)
+    col_config = {}
+    percent_cols = [col for col in display_df.columns if "%" in col]
+    for col in percent_cols:
+        display_df[col] *= 100
+        col_config[col] = st.column_config.NumberColumn(format="%.0f%%")
+
+    # Precompute opponent styles (so we can reapply them even if we must
+    precomputed_opponent_styles = display_df.apply(_opponent_row_style, axis=1)
+
+    # Fallback for older pandas: drop 'win' and reapply precomputed styles
+    disp = display_df.drop(columns=["win"])
+    styler = disp.style.format({"gain": "{:.1f}"})
+
+    # If we computed opponent styles earlier, apply them to the display
+    if precomputed_opponent_styles is not None:
+        def _apply_precomputed(row: pd.Series) -> pd.Series:
+            styles_row = precomputed_opponent_styles.loc[row.name]
+            return styles_row.reindex(disp.columns)
+        styler = styler.apply(_apply_precomputed, axis=1)
+
+    # Reapply gain mapping on the fallback display
     styler = styler.map(_gain_style, subset=["gain"])
-    st.dataframe(styler, width="stretch", hide_index=True)
+    
+    # Bold the score column on the fallback display
+    styler = styler.map(_score_style, subset=["score"])
+
+    st.dataframe(
+        styler,
+        width="stretch",
+        hide_index=True,
+        column_config=col_config,
+    )
 
     # Player news box (auto-fetched, read-only)
     st.subheader("Latest News")

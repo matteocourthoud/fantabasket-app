@@ -9,8 +9,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from src.scraping.utils import clean_player_name, get_chrome_driver
-from src.supabase.tables import TABLE_LINEUPS, TABLE_TEAMS
-from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.database.tables import TABLE_LINEUPS, TABLE_TEAMS
+from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
 WEBSITE_URL = "https://basketballmonster.com/nbalineups.aspx"

@@ -5,8 +5,8 @@ import re
 import pandas as pd
 from unidecode import unidecode
 
-from src.supabase.tables import TABLE_INITIAL_VALUES, TABLE_PLAYERS, TABLE_STATS
-from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.database.tables import TABLE_INITIAL_VALUES, TABLE_PLAYERS, TABLE_STATS
+from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
 PLAYER_MAP = {

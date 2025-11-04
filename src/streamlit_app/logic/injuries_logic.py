@@ -12,8 +12,8 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 )
 
-from src.supabase.tables import TABLE_CALENDAR, TABLE_INJURIES
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.tables import TABLE_CALENDAR, TABLE_INJURIES
+from src.database.utils import load_dataframe_from_supabase
 
 
 def get_injury_summary(injuries_df: pd.DataFrame) -> dict:

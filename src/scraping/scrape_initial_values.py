@@ -4,8 +4,8 @@ import pandas as pd
 from selenium.webdriver.common.by import By
 
 from src.scraping.utils import get_chrome_driver, get_current_season
-from src.supabase.tables import TABLE_INITIAL_VALUES
-from src.supabase.utils import save_dataframe_to_supabase
+from src.database.tables import TABLE_INITIAL_VALUES
+from src.database.utils import save_dataframe_to_supabase
 
 
 SEASON_ID_MAP = {

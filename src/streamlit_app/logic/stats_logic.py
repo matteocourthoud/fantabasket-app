@@ -3,13 +3,13 @@
 import pandas as pd
 
 from src.scraping.utils import get_current_season
-from src.supabase.tables import TABLE_FANTA_STATS
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.tables import TABLE_FANTA_STATS
+from src.database.utils import load_dataframe_from_supabase
 
 
 def load_fanta_stats_data() -> dict[str, pd.DataFrame]:
     """Load fanta_stats and predictions for the stats page."""
-    from src.supabase.tables import TABLE_PREDICTIONS
+    from src.database.tables import TABLE_PREDICTIONS
 
     season = get_current_season()
 

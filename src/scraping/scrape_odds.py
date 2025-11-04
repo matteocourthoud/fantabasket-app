@@ -8,8 +8,8 @@ import requests
 from dotenv import load_dotenv
 
 from src.scraping.utils import get_current_season
-from src.supabase.tables import TABLE_CALENDAR, TABLE_GAME_ODDS
-from src.supabase.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.database.tables import TABLE_CALENDAR, TABLE_GAME_ODDS
+from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
 
 # Load environment variables

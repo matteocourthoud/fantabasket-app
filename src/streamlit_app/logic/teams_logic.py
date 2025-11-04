@@ -2,8 +2,8 @@
 
 import pandas as pd
 
-from src.supabase.tables import TABLE_FANTA_STATS, TABLE_TEAMS
-from src.supabase.utils import load_dataframe_from_supabase
+from src.database.tables import TABLE_FANTA_STATS, TABLE_TEAMS
+from src.database.utils import load_dataframe_from_supabase
 
 
 def get_teams_gain_table(season: int = None) -> pd.DataFrame:
