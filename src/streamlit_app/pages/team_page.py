@@ -221,7 +221,7 @@ def main():
                     styler,
                     hide_index=True,
                     column_config=col_config,
-                    use_container_width=True,
+                    width="stretch",
                 )
             
             # Add spacing between games
