@@ -4,22 +4,17 @@ from urllib.parse import quote
 
 import streamlit as st
 
-from src.streamlit_app.logic import stats_logic
-from src.streamlit_app.utils import color_gain, image_to_data_uri
 from src.database.tables import TABLE_PLAYERS
 from src.database.utils import get_table_last_updated, load_dataframe_from_supabase
+from src.streamlit_app.logic import players_logic
+from src.streamlit_app.utils import color_gain, image_to_data_uri
 
 
 def main():
     """Stats page of the Streamlit application."""
 
-    # Load all data
-    data = stats_logic.load_fanta_stats_data()
-    fanta_stats = data["fanta_stats"]
-    predictions = data["predictions"]
-
     # Get team list for filter
-    all_teams = stats_logic.get_team_list(fanta_stats)
+    all_teams = players_logic.get_team_list()
 
     # Page title
     st.set_page_config(layout="wide")
@@ -31,15 +26,10 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            aggregation_method = st.selectbox(
-                "Aggregation:",
-                ["mean", "sum", "median"],
-                index=0,
-            )
+            player_search = st.text_input("Search player:", value="")
 
         with col2:
-            all_positions = sorted(fanta_stats["position"].dropna().unique())
-            position_options = ["All"] + list(all_positions)
+            position_options = ["All", "G", "F", "C"]
             selected_position = st.selectbox("Select Position:", position_options)
 
         with col3:
@@ -56,14 +46,21 @@ def main():
             )
 
     # Process and filter player stats
-    df_stats = stats_logic.process_player_stats(
-        fanta_stats_df=fanta_stats,
-        predictions_df=predictions,
+    df_stats = players_logic.compute_player_stats(
         position_filter=selected_position,
         team_filter=selected_team,
         value_range=value_range,
-        aggregation_method=aggregation_method.lower(),
     )
+    
+    # If the user entered a player search string, filter results by player name
+    if player_search and "player" in df_stats.columns:
+        df_stats = df_stats[
+            df_stats["player"].str.contains(
+                player_search, case=False, na=False
+            )
+        ]
+        if df_stats.empty:
+            st.error("No players match your search.")
 
     # Compute per-player recent scores from fanta_stats table
     df_fanta = load_dataframe_from_supabase("fanta_stats")
@@ -111,18 +108,16 @@ def main():
     display_cols = [
         "image",
         "player",
+        "pos",
         "value",
         "score",
-        "gain_hat",
+        "gain",
         "trend",
-        "pts",
-        "trb",
-        "ast",
-        "stl",
-        "blk",
-        "position",
+        "gain_hat",
+        "gain5",
+        "gain10",
+        "bench",
         "team",
-        "mp",
     ]
     df_stats = df_stats[display_cols]
 
@@ -131,13 +126,11 @@ def main():
         {
             "value": "{:.1f}",
             "score": "{:.1f}",
+            "gain": "{:.2f}",
             "gain_hat": "{:.2f}",
-            "mp": "{:.1f}",
-            "pts": "{:.1f}",
-            "trb": "{:.1f}",
-            "ast": "{:.1f}",
-            "stl": "{:.1f}",
-            "blk": "{:.1f}",
+            "gain5": "{:.2f}",
+            "gain10": "{:.2f}",
+            "bench": "{:.1f}",
         }
     )
 
@@ -156,7 +149,6 @@ def main():
         styler,
         hide_index=True,
         column_config=col_config,
-        width="stretch",
     )
     
     # Show last update time from the updates table (UTC)

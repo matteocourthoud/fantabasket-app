@@ -4,8 +4,8 @@ import datetime
 
 import pandas as pd
 
-from .client import get_supabase_client
-from .tables import TABLE_UPDATES
+from src.database.client import get_supabase_client
+from src.database.tables import TABLE_UPDATES
 
 
 def save_dataframe_to_supabase(
@@ -115,3 +115,14 @@ def get_table_last_updated(table_name: str) -> pd.Timestamp | None:
     matching = df_updates[df_updates.get("table_name") == table_name]
     ts = pd.to_datetime(matching["last_updated"].iloc[0], errors="coerce")
     return ts
+
+
+def get_time_since_last_table_update(table_name: str) -> float:
+    """Get time in minutes since last update of a given table in the database."""
+    print("Getting time since last update for table:", table_name)
+    df_updates = load_dataframe_from_supabase(TABLE_UPDATES.name)
+    matching = df_updates[df_updates.get("table_name") == table_name]
+    last_updated = pd.to_datetime(matching["last_updated"].iloc[0])
+    time_diff = pd.Timestamp.now(tz="UTC") - last_updated
+    time_since_update = time_diff.total_seconds() / 60  # minutes
+    return time_since_update

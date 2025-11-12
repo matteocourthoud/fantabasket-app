@@ -159,7 +159,6 @@ def main():
                                 st.dataframe(
                                     styled_df,
                                     hide_index=True,
-                                    width="stretch",
                                     column_config=col_config,
                                 )
 

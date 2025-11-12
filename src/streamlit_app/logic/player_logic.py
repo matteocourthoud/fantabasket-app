@@ -1,102 +1,39 @@
 """Business logic for players page - individual player statistics."""
 
-import os
-import sys
+from datetime import datetime
 
 import pandas as pd
 
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from src.database.tables import (  # noqa: E402
-    TABLE_FANTA_STATS,
-    TABLE_GAME_RESULTS,
-    TABLE_PLAYERS,
-    TABLE_STATS,
-)
-from src.database.utils import load_dataframe_from_supabase  # noqa: E402
-
-
-def load_player_data(season: int) -> dict[str, pd.DataFrame]:
-    """Load all required data for the players page."""
-    from src.database.tables import TABLE_CALENDAR, TABLE_TEAMS
-    data = {
-        "stats": load_dataframe_from_supabase(TABLE_STATS.name, filters={"season": season}),
-        "games": load_dataframe_from_supabase(TABLE_GAME_RESULTS.name, filters={"season": season}),
-        "players": load_dataframe_from_supabase(TABLE_PLAYERS.name),
-        "fanta_stats": load_dataframe_from_supabase(TABLE_FANTA_STATS.name),
-        "calendar": load_dataframe_from_supabase(TABLE_CALENDAR.name, filters={"season": season}),
-        "teams": load_dataframe_from_supabase(TABLE_TEAMS.name),
-    }
-    return data
+from src.database.utils import load_dataframe_from_supabase
+from src.scraping.update_fanta_stats import get_current_season
 
 
 def get_player_next_game(
     player_name: str,
-    stats_df: pd.DataFrame,
-    games_df: pd.DataFrame,
-    calendar_df: pd.DataFrame,
-    today: str,
-    st_debug=None,
-    teams_df: pd.DataFrame = None,
 ) -> dict:
-    """
-    Find the next scheduled game for the player's current team. Prints debug info.
-
-    Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
-        calendar_df: Calendar dataframe
-        today: Current date as string (YYYY-MM-DD)
-        st_debug: Optional Streamlit module for debug printing
-
-    Returns:
-        Dict with 'date', 'opponent', and 'is_home' or None if not found
-    """
+    """Find the next scheduled game for the player's current team."""
+    # Load data
+    season = get_current_season()
+    df_fanta_stats = load_dataframe_from_supabase("fanta_stats", {"season": season})
+    df_calendar = load_dataframe_from_supabase("calendar", {"season": season})
+    df_teams = load_dataframe_from_supabase("teams")
+    
     # Find player's most recent team from stats/games
-    player_stats = stats_df[stats_df["player"] == player_name].copy()
-    if player_stats.empty:
-        return None
-    
-    # Merge with games to get team_winner/team_loser
-    merged = pd.merge(
-        player_stats,
-        games_df[["game_id", "team_winner", "team_loser", "date"]],
-        on="game_id",
-        how="left",
-    )
-    merged = merged.sort_values("date", ascending=False)
-    if merged.empty:
-        return None
-    
-    # Guess team: if win, team = team_winner, else team = team_loser
-    most_recent = merged.iloc[0]
-    if most_recent.get("win", False):
-        team = most_recent["team_winner"]
-    else:
-        team = most_recent["team_loser"]
-        
-    # Normalize team names (strip, upper)
-    # Team is already in full format from game_results table
-    team_full = str(team).strip().upper()
-    calendar_df = calendar_df.copy()
-    calendar_df["team_home"] = calendar_df["team_home"].str.strip().str.upper()
-    calendar_df["team_visitor"] = calendar_df["team_visitor"].str.strip().str.upper()
+    team = df_fanta_stats[df_fanta_stats["player"] == player_name]["team"].iloc[-1]
     
     # Find next game for this team in calendar after today
-    future_games = calendar_df[(calendar_df["date"] > today) & ((calendar_df["team_home"] == team_full) | (calendar_df["team_visitor"] == team_full))]
-    if future_games.empty:
-        return None
-    next_game = future_games.sort_values("date").iloc[0]
-    is_home = next_game["team_home"] == team_full
+    today = datetime.today().strftime('%Y-%m-%d')
+    df_future_games = df_calendar[(df_calendar["date"] > today) &
+                               ((df_calendar["team_home"] == team) |
+                                (df_calendar["team_visitor"] == team))]
+   
+    next_game = df_future_games.sort_values("date").iloc[0]
+    is_home = next_game["team_home"] == team
     if is_home:
         opponent = next_game["team_visitor"]
     else:
         opponent = next_game["team_home"]
+    opponent = df_teams[df_teams["team"] == opponent]["fanta_team"].iloc[0]
     return {"date": next_game["date"], "opponent": opponent, "is_home": is_home}
 
 
@@ -105,104 +42,42 @@ def get_player_list(stats_df: pd.DataFrame) -> dict[str, str]:
     return sorted(stats_df["player"].unique().tolist())
 
 
-def get_player_recent_games(
-    player_name: str, stats_df: pd.DataFrame, games_df: pd.DataFrame, fanta_stats_df: pd.DataFrame, n_games: int = 10
-) -> pd.DataFrame:
-    """
-    Get recent game statistics for a specific player.
-
-    Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
-        n_games: Number of recent games to return
-
-    Returns:
-        Dataframe with player's recent game statistics
-    """
+def get_player_recent_games(player_name: str) -> pd.DataFrame:
+    """Get recent game statistics for a specific player."""
     # Filter stats for the player
-    player_stats = stats_df[stats_df["player"] == player_name].copy()
-
-    # Merge with games to get date and opponent info
-    player_stats = pd.merge(
-        player_stats,
-        games_df[["game_id", "date", "team_winner", "team_loser"]],
-        on="game_id",
-        how="left",
-    )
-
-    # Merge with fanta_stats to get gain (filter fanta_stats to this player to avoid duplicates)
-    print(fanta_stats_df)
-    player_fanta_stats = fanta_stats_df[fanta_stats_df["player"] == player_name][["game_id", "gain", "fanta_score"]]
-    player_fanta_stats["score"] = player_fanta_stats["fanta_score"].astype(int)
-    player_stats = pd.merge(
-        player_stats,
-        player_fanta_stats,
-        on="game_id",
-        how="left",
-    )
-
-    # Determine opponent
-    player_stats["opponent"] = player_stats.apply(
-        lambda row: row["team_loser"] if row["win"] else row["team_winner"], axis=1
-    )
-
-    # Sort by date descending and take most recent games
-    player_stats = player_stats.sort_values("date", ascending=False).head(n_games)
-    player_stats["fg%"] = player_stats["fg"] / player_stats["fga"]
-    player_stats["3p%"] = player_stats["tp"] / player_stats["tpa"]
-    player_stats["ast%"] = player_stats["ast"] / (player_stats["ast"] + player_stats["tov"])
+    df_fanta_stats = load_dataframe_from_supabase("fanta_stats", {"season": get_current_season()})
+    df_player = df_fanta_stats[df_fanta_stats["player"] == player_name].copy()
+    print(df_player.head())
     
-
     # Select and reorder relevant columns
     columns_to_show = [
-        "date",
-        "opponent",
+        "opponent_team",
         "start",
         "win",
-        "score",
+        "fanta_score",
         "gain",
         "pts",
         "trb",
         "ast",
         "stl",
         "blk",
-        "fg%",
-        "3p%",
-        "ast%",
+        "fg_pct",
+        "tp_pct",
+        "ast_pct",
         "mp",
     ]
 
     # Only include columns that exist in the dataframe
-    available_columns = [col for col in columns_to_show if col in player_stats.columns]
-    player_stats = player_stats[available_columns]
+    df_player = df_player[columns_to_show]
+    
+    # Rename columns for better display
+    df_player = df_player.rename(columns={
+        "opponent_team": "opponent",
+        "fanta_score": "score",
+        "fg_pct": "fg%",
+        "tp_pct": "3p%",
+        "ast_pct": "ast%",
+    })
 
-    return player_stats
+    return df_player
 
-
-def get_player_performance_over_time(
-    player_name: str, stats_df: pd.DataFrame, games_df: pd.DataFrame
-) -> pd.DataFrame:
-    """
-    Get player's performance statistics over time for plotting.
-
-    Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
-
-    Returns:
-        Dataframe with player's performance over time (sorted by date)
-    """
-    # Filter stats for the player
-    player_stats = stats_df[stats_df["player"] == player_name].copy()
-
-    # Merge with games to get date
-    player_stats = pd.merge(
-        player_stats, games_df[["game_id", "date"]], on="game_id", how="left"
-    )
-
-    # Sort by date
-    player_stats = player_stats.sort_values("date")
-
-    return player_stats

@@ -4,10 +4,14 @@ from urllib.parse import quote
 
 import streamlit as st
 
-from src.streamlit_app.logic import injuries_logic, stats_logic
-from src.streamlit_app.utils import image_to_data_uri
 from src.database.tables import TABLE_PLAYERS
-from src.database.utils import load_dataframe_from_supabase
+from src.database.utils import (
+    get_time_since_last_table_update,
+    load_dataframe_from_supabase,
+)
+from src.scraping import scrape_injuries, scrape_lineups
+from src.streamlit_app.logic import injuries_logic, players_logic
+from src.streamlit_app.utils import image_to_data_uri
 
 
 def main():
@@ -16,31 +20,33 @@ def main():
     # Hero section with centered styling
     st.title("Fantabasket Stats")
     st.write("Your NBA Fantasy Basketball Analytics Hub")
-
+    
+    # Scrape latest injuries on app start
+    with st.spinner("Checking for latest injuries..."):
+        time_since_update_injuries = get_time_since_last_table_update("injuries")
+        if time_since_update_injuries > 60:
+            print("Time since last injuries update:", time_since_update_injuries)
+            scrape_injuries.scrape_injuries()
+            
+    # Scrape lineups data on app start
+    with st.spinner("Checking for latest lineups..."):
+        time_since_update_lineups = get_time_since_last_table_update("lineups")
+        if time_since_update_lineups > 60:
+            print("Time since last lineups update:", time_since_update_lineups)
+            scrape_lineups.scrape_lineups()
+            
     # Create two columns for hottest players and latest injuries
     col1, col2 = st.columns(2)
 
     # Left column: Hottest Players
     with col1:
         st.markdown("### 🔥 Hottest Players")
-
-        # Load data using stats_logic
-        data = stats_logic.load_fanta_stats_data()
-        fanta_stats = data["fanta_stats"]
-        predictions = data["predictions"]
         
         # Load players table for player_id mapping
         players_df = load_dataframe_from_supabase(TABLE_PLAYERS.name)
 
         # Process player stats to get aggregated data with predictions
-        df_hot = stats_logic.process_player_stats(
-            fanta_stats_df=fanta_stats,
-            predictions_df=predictions,
-            aggregation_method="last",
-        )
-
-        # Get top 10 by predicted gain
-        df_hot = df_hot.head(10)
+        df_hot = players_logic.compute_player_stats()
         
         # Merge with players table to get player_id
         df_hot = df_hot.merge(
@@ -93,7 +99,6 @@ def main():
                     display_text=r"name=(.*?)$"
                 ),
             },
-            use_container_width=True,
         )
         
         # Link to full players page
@@ -116,7 +121,7 @@ def main():
         )
         df_injuries_sorted = df_injuries_sorted.sort_values(
             by="return_date", ascending=True
-        ).head(10)
+        )
         
         # Merge with players table to get player_id
         df_injuries_sorted = df_injuries_sorted.merge(
@@ -169,7 +174,6 @@ def main():
                     display_text=r"name=(.*?)$"
                 )
             },
-            use_container_width=True,
         )
         
         # Link to full injuries page

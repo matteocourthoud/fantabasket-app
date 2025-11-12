@@ -1,16 +1,8 @@
 """Business logic for injuries page - injured players information."""
 
 import datetime
-import os
-import sys
 
 import pandas as pd
-
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
 
 from src.database.tables import TABLE_CALENDAR, TABLE_INJURIES
 from src.database.utils import load_dataframe_from_supabase

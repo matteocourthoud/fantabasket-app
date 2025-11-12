@@ -2,7 +2,6 @@
 
 import pandas as pd
 
-from src.scraping.utils import get_current_season
 from src.database.tables import (
     TABLE_FANTA_STATS,
     TABLE_GAME_RESULTS,
@@ -12,6 +11,49 @@ from src.database.tables import (
     TABLE_TEAMS,
 )
 from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.scraping.utils import get_current_season
+
+
+def _add_missing_player_games(stats_df: pd.DataFrame) -> pd.DataFrame:
+    """Adds rows for players who didn't play a game (missing from stats_df)."""
+    # Get the list of all players and their teams
+    cols_player = ['player', 'team', 'player_id']
+    df_players = stats_df[cols_player].drop_duplicates()
+
+    # Get the list of all game_id and team combinations
+    cols_games = ['game_id', 'team', 'team_winner', 'team_loser', 'win', 'date', 'season']
+    df_games = stats_df[cols_games].drop_duplicates()
+
+    # Merge players with games by team to get all player-game_id combinations
+    all_combinations = pd.merge(df_players, df_games, on='team')
+
+    # Identify missing player-game_id combinations
+    existing_combinations = stats_df[['player', 'game_id']]
+    missing_combinations = pd.merge(
+        all_combinations,
+        existing_combinations,
+        on=['player', 'game_id'],
+        how='left',
+        indicator=True
+    )
+    missing_combinations = missing_combinations[missing_combinations['_merge'] == 'left_only']
+    missing_combinations = missing_combinations.drop(columns=['_merge'])
+
+    # Concatenate the missing rows with the original stats_df
+    updated_stats_df = pd.concat([stats_df, missing_combinations], ignore_index=True)
+    updated_stats_df = (
+        updated_stats_df.
+        sort_values(['player', 'game_id'])
+        .reset_index(drop=True)
+        .fillna(0)
+    )
+    
+    # Convert column types to original types in stats_df
+    for col in stats_df.columns:
+        if col in updated_stats_df.columns:
+            updated_stats_df[col] = updated_stats_df[col].astype(stats_df[col].dtype)
+
+    return updated_stats_df
 
 
 def _compute_fanta_score(df: pd.DataFrame) -> pd.Series:
@@ -47,13 +89,16 @@ def _compute_fanta_score(df: pd.DataFrame) -> pd.Series:
 
 def _compute_gain(value_before: float, score: float) -> float:
     """Computes the gain in value after a game."""
-    if pd.isna(score):
+    if pd.isna(score) or (score == 0):
         return -0.1
     else:
         return 0.025 * score - 0.045 * value_before
 
 
-def _compute_player_fanta_stats(player_games: pd.DataFrame, initial_value: float = None) -> pd.DataFrame:
+def _compute_player_fanta_stats(
+    player_games: pd.DataFrame,
+    initial_value: float = None,
+) -> pd.DataFrame:
     """Computes fanta stats for a single player's games, iterating chronologically.
     
     Args:
@@ -118,7 +163,11 @@ def update_fanta_stats(season: int = None) -> None:
     )
     players_df = load_dataframe_from_supabase(TABLE_PLAYERS.name)
     teams_df = load_dataframe_from_supabase(TABLE_TEAMS.name)
-
+    
+    # Add some extra stats
+    stats_df["fg_pct"] = stats_df["fg"] / stats_df["fga"]
+    stats_df["tp_pct"] = stats_df["tp"] / stats_df["tpa"]
+    stats_df["ast_pct"] = stats_df["ast"] / (stats_df["ast"] + stats_df["tov"])
 
     # Merge stats with game info (date, team_winner, team_loser)
     stats_df = pd.merge(
@@ -133,6 +182,9 @@ def update_fanta_stats(season: int = None) -> None:
         lambda row: row["team_winner"] if row["win"] else row["team_loser"],
         axis=1
     )
+    
+    # Add games for players who didn't play any game yet this season
+    stats_df = _add_missing_player_games(stats_df)
 
     # Merge stats with players to get fanta_player_id
     stats_df = pd.merge(
@@ -157,6 +209,7 @@ def update_fanta_stats(season: int = None) -> None:
         on="fanta_player_id",
         how="left"
     )
+    
     
     # Compute fanta_score for each game
     print("  Computing fanta scores...")
@@ -197,7 +250,7 @@ def update_fanta_stats(season: int = None) -> None:
     final_cols = [
         "game_id", "player", "team", "fanta_team", "position", "fanta_score",
         "value_before", "gain", "value_after", "mp", "pts", "trb", "ast", "stl", "blk",
-        "start", "opponent_team", "season",
+        "fg_pct", "tp_pct", "ast_pct", "start", "win", "opponent_team", "season",
     ]
     all_fanta_stats = all_fanta_stats[final_cols]
 

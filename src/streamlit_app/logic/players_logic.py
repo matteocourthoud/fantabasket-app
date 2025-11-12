@@ -1,245 +1,185 @@
-"""Business logic for players page - individual player statistics."""
-
-import os
-import sys
+"""Business logic for stats page - data loading and processing."""
 
 import pandas as pd
 
-
-# Add the project root to the Python path
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
-
-from src.database.tables import (  # noqa: E402
-    TABLE_FANTA_STATS,
-    TABLE_GAME_RESULTS,
-    TABLE_PLAYERS,
-    TABLE_STATS,
-)
-from src.database.utils import load_dataframe_from_supabase  # noqa: E402
+from src.database.tables import TABLE_FANTA_STATS, TABLE_PREDICTIONS
+from src.database.utils import load_dataframe_from_supabase
+from src.scraping.update_fanta_stats import get_current_season
 
 
-def load_player_data(season: int) -> dict[str, pd.DataFrame]:
-    """Load all required data for the players page."""
-    from src.database.tables import TABLE_CALENDAR, TABLE_TEAMS
-    data = {
-        "stats": load_dataframe_from_supabase(TABLE_STATS.name, filters={"season": season}),
-        "games": load_dataframe_from_supabase(TABLE_GAME_RESULTS.name, filters={"season": season}),
-        "players": load_dataframe_from_supabase(TABLE_PLAYERS.name),
-        "fanta_stats": load_dataframe_from_supabase(TABLE_FANTA_STATS.name),
-        "calendar": load_dataframe_from_supabase(TABLE_CALENDAR.name, filters={"season": season}),
-        "teams": load_dataframe_from_supabase(TABLE_TEAMS.name),
-    }
-    return data
+def get_team_list() -> list[str]:
+    """Extract sorted list of all teams from fanta_stats dataframe."""
+    fanta_stats_df = load_dataframe_from_supabase(TABLE_FANTA_STATS.name)
+    return sorted(fanta_stats_df["fanta_team"].dropna().unique().tolist())
 
 
-def get_player_next_game(
-    player_name: str,
-    stats_df: pd.DataFrame,
-    games_df: pd.DataFrame,
-    calendar_df: pd.DataFrame,
-    today: str,
-    st_debug=None,
-    teams_df: pd.DataFrame = None,
-) -> dict:
-    """
-    Find the next scheduled game for the player's current team. Prints debug info if st_debug is provided.
-
-    Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
-        calendar_df: Calendar dataframe
-        today: Current date as string (YYYY-MM-DD)
-        st_debug: Optional Streamlit module for debug printing
-
-    Returns:
-        Dict with 'date', 'opponent', and 'is_home' or None if not found
-    """
-    # Find player's most recent team from stats/games
-    player_stats = stats_df[stats_df["player"] == player_name].copy()
-    if player_stats.empty:
-        return None
-    # Merge with games to get winner/loser
-    merged = pd.merge(
-        player_stats,
-        games_df[["game_id", "team_winner", "team_loser", "date"]],
-        on="game_id",
-        how="left",
-    )
-    merged = merged.sort_values("date", ascending=False)
-    if merged.empty:
-        return None
-    # Guess team: if win, team = team_winner, else team = team_loser
-    most_recent = merged.iloc[0]
-    if most_recent.get("win", False):
-        team = most_recent["team_winner"]
-    else:
-        team = most_recent["team_loser"]
-    # Normalize team names (strip, upper)
-    # Team is already in full format from game_results table
-    team_full = str(team).strip().upper()
-    calendar_df = calendar_df.copy()
-    calendar_df["team_home"] = calendar_df["team_home"].str.strip().str.upper()
-    calendar_df["team_visitor"] = calendar_df["team_visitor"].str.strip().str.upper()
-    # Find next game for this team in calendar after today
-    future_games = calendar_df[(calendar_df["date"] > today) & ((calendar_df["team_home"] == team_full) | (calendar_df["team_visitor"] == team_full))]
-    if future_games.empty:
-        return None
-    next_game = future_games.sort_values("date").iloc[0]
-    is_home = next_game["team_home"] == team_full
-    if is_home:
-        opponent = next_game["team_visitor"]
-    else:
-        opponent = next_game["team_home"]
-    return {"date": next_game["date"], "opponent": opponent, "is_home": is_home}
-
-
-def get_player_list(stats_df: pd.DataFrame) -> dict[str, str]:
-    """Return a mapping of simplified_name -> original_name for players."""
-    return sorted(stats_df["player"].unique().tolist())
-
-
-def get_player_recent_games(
-    player_name: str, stats_df: pd.DataFrame, games_df: pd.DataFrame, fanta_stats_df: pd.DataFrame, n_games: int = 10
+def calculate_player_aggregate_stats(
+    df_fanta_stats: pd.DataFrame,
+    position_filter: str | None = None,
 ) -> pd.DataFrame:
-    """
-    Get recent game statistics for a specific player.
+    """Calculate aggregate statistics per player from fanta_stats."""
+    df = df_fanta_stats.copy()
+    
+    # Apply position filter if specified
+    if position_filter and position_filter != "All":
+        df = df[df["position"] == position_filter]
 
-    Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
-        n_games: Number of recent games to return
-
-    Returns:
-        Dataframe with player's recent game statistics
-    """
-    # Filter stats for the player
-    player_stats = stats_df[stats_df["player"] == player_name].copy()
-
-    # Merge with games to get date and opponent info
-    player_stats = pd.merge(
-        player_stats,
-        games_df[["game_id", "date", "winner", "loser"]],
-        on="game_id",
-        how="left",
+    # Aggregate statistics per player
+    player_avg_stats = (
+        df.groupby(["player", "fanta_team", "position"])
+        .agg(
+            games=("game_id", "count"),
+            mp=("mp", "mean"),
+            pts=("pts", "mean"),
+            trb=("trb", "mean"),
+            ast=("ast", "mean"),
+            stl=("stl", "mean"),
+            blk=("blk", "mean"),
+            avg_gain=("gain", "mean"),
+            med_gain=("gain", "median"),
+            gain=("gain", "sum"),
+            last_gain=("gain", "last"),
+            value=("value_after", "last"),
+            score=("fanta_score", "mean"),
+        )
+        .reset_index()
+        .rename(columns={
+            "fanta_team": "team",
+            "position": "pos",
+        })
     )
-
-    # Merge with fanta_stats to get gain (filter fanta_stats to this player to avoid duplicates)
-    player_fanta_stats = fanta_stats_df[fanta_stats_df["player"] == player_name][["game_id", "gain"]]
-    player_stats = pd.merge(
-        player_stats,
-        player_fanta_stats,
-        on="game_id",
-        how="left",
-    )
-
-    # Determine opponent
-    player_stats["opponent"] = player_stats.apply(
-        lambda row: row["loser"] if row["win"] else row["winner"], axis=1
-    )
-
-    # Sort by date descending and take most recent games
-    player_stats = player_stats.sort_values("date", ascending=False).head(n_games)
-
-    # Select and reorder relevant columns
-    columns_to_show = [
-        "date",
-        "opponent",
-        "win",
-        "gain",
-        "mp",
-        "pts",
-        "trb",
-        "ast",
-        "stl",
-        "blk",
-        "fg",
-        "fga",
-        "tp",
-        "tpa",
-        "ft",
-        "fta",
-        "tov",
-        "pf",
-        "pm",
-    ]
-
-    # Only include columns that exist in the dataframe
-    available_columns = [col for col in columns_to_show if col in player_stats.columns]
-    player_stats = player_stats[available_columns]
-
-    return player_stats
+    
+    return player_avg_stats
 
 
-def get_player_performance_over_time(
-    player_name: str, stats_df: pd.DataFrame, games_df: pd.DataFrame
+def apply_filters(
+    df: pd.DataFrame,
+    team: str | None = None,
+    value_range: tuple[float, float] | None = None,
 ) -> pd.DataFrame:
+    """Apply team and value range filters to dataframe."""
+    
+    # Filter by team if specified (expects fanta_team code like 'BOS', 'LAL')
+    if team and team != "All":
+        # Try both 'team' and 'fanta_team' columns
+        if "team" in df.columns:
+            df = df[df["team"] == team]
+        elif "fanta_team" in df.columns:
+            df = df[df["fanta_team"] == team]
+
+    # Filter by value range if specified
+    if value_range:
+        df = df[(df["value"] >= value_range[0]) & (df["value"] <= value_range[1])]
+
+    return df
+
+
+
+def compute_bench_score(df_fanta_stats: pd.DataFrame) -> pd.DataFrame:
     """
-    Get player's performance statistics over time for plotting.
+    Compute the bench_score for each player based on recent bench transitions,
+    including the next match predictions.
 
     Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        games_df: Games dataframe
+        df_fanta_stats (pd.DataFrame): Historical fantasy stats DataFrame.
+        lineups_df (pd.DataFrame): Lineups DataFrame for the next game.
 
     Returns:
-        Dataframe with player's performance over time (sorted by date)
+        pd.DataFrame: DataFrame with players and their computed bench scores.
     """
-    # Filter stats for the player
-    player_stats = stats_df[stats_df["player"] == player_name].copy()
+    def calculate_bench_score(player_group):
+        starts = player_group["start"].values
+        if len(starts) < 2:
+            return 0  # Not enough data to calculate bench_score
 
-    # Merge with games to get date
-    player_stats = pd.merge(
-        player_stats, games_df[["game_id", "date"]], on="game_id", how="left"
+        # Identify spells of consecutive 0s or 1s
+        spells = []
+        current_spell = [starts[0]]
+
+        for i in range(1, len(starts)):
+            if starts[i] == current_spell[-1]:
+                current_spell.append(starts[i])
+            else:
+                spells.append(current_spell)
+                current_spell = [starts[i]]
+        spells.append(current_spell)  # Add the last spell
+
+        if len(spells) < 2:
+            return 0  # Not enough spells to calculate bench_score
+
+        # Calculate lengths of the most recent and previous spells
+        most_recent_spell = spells[-1]
+        previous_spell = spells[-2]
+        most_recent_start_value = most_recent_spell[0]
+        length_most_recent = len(most_recent_spell)
+        length_previous = len(previous_spell)
+
+        # Apply the formula
+        bench_score = (
+            (-1 + 2 * most_recent_start_value)
+            / length_most_recent
+            * length_previous
+        )
+        return bench_score
+
+    # Group by player and calculate bench_score
+    df_bench = df_fanta_stats.groupby("player", as_index=False).apply(
+        lambda group: calculate_bench_score(group)
     )
+    df_bench.columns = ["player", "bench"]
 
-    # Sort by date
-    player_stats = player_stats.sort_values("date")
-
-    return player_stats
+    return df_bench
 
 
-def get_player_summary(
-    player_name: str, stats_df: pd.DataFrame, fanta_stats_df: pd.DataFrame
-) -> dict:
-    """
-    Get summary statistics for a player.
-
-    Args:
-        player_name: Name of the player
-        stats_df: Player statistics dataframe
-        fanta_stats_df: Fantasy stats dataframe
-
-    Returns:
-        Dictionary with summary statistics
-    """
-    player_stats = stats_df[stats_df["player"] == player_name]
+def compute_player_stats(
+    position_filter: str | None = None,
+    team_filter: str | None = None,
+    value_range: tuple[float, float] | None = None,
+) -> pd.DataFrame:
+    """Complete processing pipeline for player statistics."""
+    
+    # Load data
+    filters = {"season": get_current_season()}
+    df_fanta_stats = load_dataframe_from_supabase(TABLE_FANTA_STATS.name, filters=filters)
+    df_predictions = load_dataframe_from_supabase(TABLE_PREDICTIONS.name)
 
     # Calculate averages
-    numeric_cols = player_stats.select_dtypes(include="number").columns
-    cols_to_exclude = ["id", "game_id", "player_id", "season"]
-    cols_to_avg = [col for col in numeric_cols if col not in cols_to_exclude]
-
-    avg_stats = player_stats[cols_to_avg].mean()
-
-    # Get current fantasy value
-    player_fanta = fanta_stats_df[fanta_stats_df["player"] == player_name]
-    current_value = (
-        player_fanta["value_after"].iloc[-1] if len(player_fanta) > 0 else None
+    df_players = calculate_player_aggregate_stats(
+        df_fanta_stats, position_filter
     )
-    avg_gain = player_fanta["gain"].mean() if len(player_fanta) > 0 else None
 
-    summary = {
-        "games_played": len(player_stats),
-        "avg_points": avg_stats.get("pts", 0),
-        "avg_rebounds": avg_stats.get("trb", 0),
-        "avg_assists": avg_stats.get("ast", 0),
-        "avg_minutes": avg_stats.get("mp", 0),
-        "current_value": current_value,
-        "avg_gain": avg_gain,
-    }
+    # Merge with predictions to get predicted_gain
+    df_players = pd.merge(
+        df_players,
+        df_predictions[["player", "predicted_gain"]],
+        on="player",
+        how="left",
+    )
+    # Rename predicted_gain to gain
+    df_players = df_players.rename(columns={"predicted_gain": "gain_hat"})
+    
+    # Calculate med5 and med10
+    df_median_5 = (
+        df_fanta_stats.groupby("player").tail(5)
+        .groupby("player", as_index=False).agg(gain5=("gain", "median"))
+    )
+    df_median_10 = (
+        df_fanta_stats.groupby("player").tail(10)
+        .groupby("player", as_index=False).agg(gain10=("gain", "median"))
+    )
 
-    return summary
+    # Merge med5 and med10 into df_players
+    df_players = pd.merge(df_players, df_median_5, on="player", how="left")
+    df_players = pd.merge(df_players, df_median_10, on="player", how="left")
+    
+    # Compute bench_score
+    df_bench_score = compute_bench_score(df_fanta_stats)
+    df_players = pd.merge(df_players, df_bench_score, on="player", how="left")
+
+    # Apply filters
+    df_players = apply_filters(df_players, team_filter, value_range)
+
+    # Sort by gain (descending)
+    df_players = df_players.sort_values("gain_hat", ascending=False)
+
+    return df_players

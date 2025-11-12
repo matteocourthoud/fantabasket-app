@@ -1,11 +1,12 @@
 """Players page UI - individual player statistics and performance."""
 
-import datetime
 import os
 
 import pandas as pd
 import streamlit as st
 
+from src.database.utils import load_dataframe_from_supabase
+from src.scraping.scrape_player_news import scrape_player_news
 from src.scraping.utils import get_current_season
 from src.streamlit_app.logic import player_logic
 
@@ -20,11 +21,6 @@ def main():
         }
         </style>
     """, unsafe_allow_html=True)
-    
-    season = get_current_season()
-
-    # Load all data
-    data = player_logic.load_player_data(season)
 
     # Get player name from query params
     query_params = st.query_params
@@ -32,13 +28,18 @@ def main():
     if not selected_player:
         st.error("No player specified in URL.")
         return
+    
+    # Load all data
+    season = get_current_season()
+    df_player = load_dataframe_from_supabase("players")
+    df_fanta_stats = load_dataframe_from_supabase("fanta_stats", {"season": season})
 
     # Display player image if available
     project_root = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", "..")
     )
-    player_code = data["players"].loc[
-        data["players"]["player"] == selected_player, "player_id"
+    player_code = df_player.loc[
+        df_player["player"] == selected_player, "player_id"
     ].values[0]
     image_path = os.path.join(project_root, "data", "players", f"{player_code}.jpg")
         
@@ -50,31 +51,10 @@ def main():
         st.image(image_path, width=80)
     
     # Get next game info
-    next_game = player_logic.get_player_next_game(
-        selected_player,
-        data["stats"],
-        data["games"],
-        data["calendar"],
-        today = datetime.date.today().isoformat(),
-        teams_df=data["teams"],
-    )
-    
-    # Get next opponent fanta_team
-    next_fanta_team = None
-    if next_game is not None:
-        opp_nba = next_game["opponent"]
-        teams_df = data["teams"]
-        teams_df["team"] = teams_df["team"].str.strip().str.upper()
-        teams_df["fanta_team"] = teams_df["fanta_team"].astype(str)
-        match = teams_df[teams_df["team"] == str(opp_nba).strip().upper()]
-        if not match.empty:
-            next_fanta_team = match.iloc[0]["fanta_team"]
-        else:
-            next_fanta_team = opp_nba
+    next_game = player_logic.get_player_next_game(selected_player)
     
     # Compute latest gain and median gain
-    fanta_stats = data["fanta_stats"]
-    player_fanta = fanta_stats[fanta_stats["player"] == selected_player]
+    player_fanta = df_fanta_stats[df_fanta_stats["player"] == selected_player]
     current_value = player_fanta["value_after"].iloc[-1]
     latest_gain = player_fanta.iloc[-1]["gain"]
     avg_score = player_fanta["fanta_score"].mean()
@@ -96,13 +76,11 @@ def main():
         "Median Score",
         round(median_score, 1),
     )
-    col4.metric("Next Opponent", next_fanta_team)
+    col4.metric("Next Opponent", next_game["opponent"])
 
     # Recent games section
     st.subheader("Recent Games")
-    recent_games = player_logic.get_player_recent_games(
-        selected_player, data["stats"], data["games"], data["fanta_stats"], n_games=100,
-    )
+    df_recent_games = player_logic.get_player_recent_games(selected_player)
     
     # Style the gain column as in stats_page and color the opponent cell by win/loss
     def _gain_style(v):
@@ -131,16 +109,8 @@ def main():
                 styles["opponent"] = "color: #b06f6f"
         return styles
 
-    def _score_style(v):
-        try:
-            if pd.isna(v):
-                return ""
-            return "font-weight: 700"
-        except Exception:
-            return ""
-
     # Ensure 'start' column visible (move near opponent if present)
-    display_df = recent_games.copy()
+    display_df = df_recent_games.copy()
 
     # Prepare Streamlit column_config for percent columns (fg%, 3p%, ast%)
     col_config = {}
@@ -154,7 +124,7 @@ def main():
 
     # Fallback for older pandas: drop 'win' and reapply precomputed styles
     disp = display_df.drop(columns=["win"])
-    styler = disp.style.format({"gain": "{:.1f}"})
+    styler = disp.style.format({"gain": "{:.1f}", "score": "{:.1f}"})
 
     # If we computed opponent styles earlier, apply them to the display
     if precomputed_opponent_styles is not None:
@@ -166,21 +136,16 @@ def main():
     # Reapply gain mapping on the fallback display
     styler = styler.map(_gain_style, subset=["gain"])
     
-    # Bold the score column on the fallback display
-    styler = styler.map(_score_style, subset=["score"])
-
     st.dataframe(
         styler,
-        width="stretch",
         hide_index=True,
         column_config=col_config,
     )
 
     # Player news box (auto-fetched, read-only)
     st.subheader("Latest News")
-    from src.scraping.scrape_player_news import _scrape_player_news  # noqa: E402
     with st.spinner("Fetching latest news..."):
-        news_df = _scrape_player_news(selected_player)
+        news_df = scrape_player_news(selected_player)
     if news_df.empty:
         st.info("No news found for this player.")
     else:

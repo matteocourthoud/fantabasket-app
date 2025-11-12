@@ -2,9 +2,9 @@
 
 import pandas as pd
 
-from src.scraping.utils import clean_player_name
 from src.database.tables import TABLE_INJURIES
 from src.database.utils import save_dataframe_to_supabase
+from src.scraping.utils import clean_player_name
 
 
 WEBSITE_URL = "https://www.cbssports.com/nba/injuries/"

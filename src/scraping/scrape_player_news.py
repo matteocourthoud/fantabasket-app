@@ -3,12 +3,9 @@
 import datetime
 
 import pandas as pd
+import requests
 from bs4 import BeautifulSoup
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
-from src.scraping.utils import get_chrome_driver
 from src.database.tables import TABLE_PLAYER_NEWS
 from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
 
@@ -23,9 +20,27 @@ def _load_player_news(player: str) -> pd.DataFrame:
         filters={"player": player},
     )
 
-def _scrape_player_news(player: str) -> pd.DataFrame:
+
+def _get_df_player_news(player: str) -> pd.DataFrame:
+    """Scrape Rotowire news for a player using requests and return a DataFrame."""
+    url = ROTOWIRE_SEARCH.format(player=player)
+    print(url)
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        text_news = soup.select("div.news-update__news")[0].get_text().strip()
+        text_analysis = soup.select("div.news-update__analysis")[0].get_text().strip()
+        text = text_news + "\n\n" + text_analysis.replace("ANALYSIS", "")
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        return pd.DataFrame([{"player": player, "news": text, "scraped_at": now}])
+    except Exception as e:
+        print(f"Error scraping news for {player} at {url}: {e}")
+        return pd.DataFrame()
+
+
+def scrape_player_news(player: str) -> pd.DataFrame:
     """Scrape Rotowire news for a specific player and return a DataFrame."""
-    
     # Check if we already have news for this player, from today
     existing_news = _load_player_news(player)
     if (not existing_news.empty):
@@ -33,27 +48,10 @@ def _scrape_player_news(player: str) -> pd.DataFrame:
             existing_news.iloc[0]["scraped_at"], utc=True
         ).date() == pd.Timestamp.now(tz="UTC").date():
             return existing_news
-    
+
     # Scrape page content
-    url = ROTOWIRE_SEARCH.format(player=player)
-    driver = get_chrome_driver()
-    driver.get(url)
-    
-    # Parse news content
-    try:
-        WebDriverWait(driver, 1).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.news-update"))
-        )
-        html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
-        div = soup.select("div.news-update__news")[0]
-        text = div.get_text(separator=" ", strip=True)
-        now = datetime.datetime.now(datetime.UTC).isoformat()
-        df = pd.DataFrame([{"player": player, "news": text, "scraped_at": now}])
-    except Exception as e:
-        print(f"Error scraping news for {player} at {url}: {e}")
-        return pd.DataFrame()
-    
+    df = _get_df_player_news(player)
+
     # Save news to Supabase
     save_dataframe_to_supabase(
         df=df[["player", "news", "scraped_at"]],
@@ -61,5 +59,5 @@ def _scrape_player_news(player: str) -> pd.DataFrame:
         index_columns=["player"],
         upsert=True,
     )
-    
+
     return df

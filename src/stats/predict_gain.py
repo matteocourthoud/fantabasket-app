@@ -1,11 +1,10 @@
 """Predict fantabasket gain for the next match."""
 
 
+import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 
-from src.scraping.update_fanta_stats import _compute_gain
-from src.scraping.utils import get_current_season
 from src.database.tables import (
     TABLE_CALENDAR,
     TABLE_FANTA_STATS,
@@ -15,6 +14,8 @@ from src.database.tables import (
     TABLE_PREDICTIONS,
 )
 from src.database.utils import load_dataframe_from_supabase, save_dataframe_to_supabase
+from src.scraping.update_fanta_stats import _compute_gain
+from src.scraping.utils import get_current_season
 
 
 def _get_season_stats_with_match_info(season: int) -> pd.DataFrame:
@@ -121,7 +122,7 @@ def _fit_model_gain(df: pd.DataFrame):
     days_from_last_date = 1.0 + (
         df_train["last_date"] - df_train["date"]
     ).dt.days.astype(float)
-    df_train["weights"] = days_from_last_date ** (-1)
+    df_train["weights"] = 1 / np.sqrt(1 + days_from_last_date)
 
     model = smf.wls(
         "fanta_score ~ -1 + C(player) + C(opponent_team) + start",
