@@ -7,7 +7,7 @@ from src.streamlit_app.pages import (
     home_page,
     injuries_page,
     player_page,
-    stats_page,
+    players_page,
     team_page,
     teams_page,
     updates_page,
@@ -29,8 +29,8 @@ home_page_obj = st.Page(
     icon=":material/home:",
     url_path="home"
 )
-stats_page_obj = st.Page(
-    stats_page.main,
+players_page_obj = st.Page(
+    players_page.main,
     title="Players",
     icon=":material/bar_chart:",
     url_path="players",
@@ -77,7 +77,7 @@ games_page_obj = st.Page(
 st.logo("icon.png")
 st.sidebar.page_link(home_page_obj, label='Home')
 st.sidebar.page_link(games_page_obj, label='Games')
-st.sidebar.page_link(stats_page_obj, label='Players')
+st.sidebar.page_link(players_page_obj, label='Players')
 st.sidebar.page_link(teams_page_obj, label='Teams')
 st.sidebar.page_link(injuries_page_obj, label='Injuries')
 st.sidebar.page_link(updates_page_obj, label='Updates')
@@ -87,7 +87,7 @@ st.sidebar.page_link(updates_page_obj, label='Updates')
 pg = st.navigation(
     [
         home_page_obj,
-        stats_page_obj,
+        players_page_obj,
         player_page_obj,
         games_page_obj,
         team_page_obj,
