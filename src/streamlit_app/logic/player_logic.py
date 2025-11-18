@@ -47,7 +47,6 @@ def get_player_recent_games(player_name: str) -> pd.DataFrame:
     # Filter stats for the player
     df_fanta_stats = load_dataframe_from_supabase("fanta_stats", {"season": get_current_season()})
     df_player = df_fanta_stats[df_fanta_stats["player"] == player_name].copy()
-    print(df_player.head())
     
     # Select and reorder relevant columns
     columns_to_show = [
